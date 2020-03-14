@@ -35,14 +35,12 @@ MAX_COLS = 4
 
 sg.theme('Dark Purple 6')
 
-
-
 DEFAULT_SETTINGS = {}
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
 
 settings = {}
-
+########################################## SETTINGS ##########################################
 def load_settings():
     try:
         with open(SETTINGS_FILE, 'r') as f:
@@ -73,18 +71,7 @@ def change_settings(settings):
 
     return settings
 
-
-
-
-def draw_bars(graph, data, bar_spacing, bar_width):
-    graph.erase()
-    for i, graph_value in enumerate(data):
-        graph.draw_rectangle(top_left=(i * bar_spacing + EDGE_OFFSET, graph_value),
-                             bottom_right=(i * bar_spacing + EDGE_OFFSET + bar_width, 0),
-                             line_width=0,
-                             fill_color=sg.theme_text_color())
-        # graph.draw_text(text=graph_value, location=(i*bar_spacing+EDGE_OFFSET+5, graph_value+10))
-
+########################################## DOWNLOAD DATA ##########################################
 
 def download_data():
 
@@ -102,13 +89,17 @@ def download_data():
     return data_split
 
 
+########################################## MAIN ##########################################
+
+
 def main():
     data = download_data()
     header = data[0]
     graph_data = [row[4:] for row in data[1:]]
     graph_values = []
     for row in graph_data:
-        graph_values.append([int(d) for d in row])
+        for d in row:
+            graph_values.append([int(d) if d!= '' else 0 for d in row])
     location = [f'{row[0]} {row[1]}' for row in data[1:]]
     # make list of countries
     locations = set([row[1] for row in data[1:]])
@@ -120,7 +111,7 @@ def main():
         for i, row in enumerate(data[1:]):
             if loc == row[1]:
                 for j, d in enumerate(row[4:]):
-                    totals[j] += int(d)
+                    totals[j] += int(d if d!= '' else 0)
         loc_data_dict[loc] = totals
 
 
@@ -143,7 +134,7 @@ def main():
     layout += graph_layout
     layout += [[sg.Button('Draw'), sg.Exit()]]
 
-    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=True, margins=(0,0))
+    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=False, margins=(0,0))
 
     while True:
         event, values = window.read()
@@ -152,23 +143,29 @@ def main():
 
         show = ['US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Sweden', 'Australia', 'Austria', 'Netherlands']
         for i, loc in enumerate(show):
-        # for i, loc in enumerate(loc_data_dict.keys()):
             if i >= MAX_COLS*MAX_ROWS:
                 break
             values = loc_data_dict[loc]
-            window[f'-TITLE-{i}'].update(f'{loc} {values[-1]}')
+            window[f'-TITLE-{i}'].update(f'{loc} {max(values)}')
             graph = window[i]
-            # values = [int(v) for v in graph_data[i]]
-            # values = graph_values[i]
+            # auto-scale the graph.  Will make this an option in the future
             max_value = max(values)
             graph.change_coordinates((0,0), (DATA_SIZE[0], max_value))
+            # calculate how big the bars should be
             num_values = len(values)
             bar_width_total = DATA_SIZE[0]//num_values
             bar_width = bar_width_total*2//3
             bar_width_spacing = bar_width_total
-            draw_bars(graph, values, bar_width_spacing, bar_width)
+            # Draw the Graph
+            graph.erase()
+            bar_ids = [graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
+                                        bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
+                                        line_width=0,
+                                        fill_color=sg.theme_text_color()) for i, graph_value in enumerate(values)]
 
     window.close()
+
+
 
 if __name__ == '__main__':
     # settings = load_settings()
