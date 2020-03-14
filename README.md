@@ -12,13 +12,20 @@ There are currently 2 tools checked in.
 
 ## Requirements
 
-You need to install 2 packages for these tools
+### Running The .py Files
+
+If you want to run the Python code, you need to install 2 packages for these tools
 
 1 - PySimpleGUI
 
 2 - geopy (requireed only for the Widget)
 
 These are easily installable via pip.
+
+### EXE Files
+
+If you don't want to bother with setting up a Python environment and just want to run the programs by themselves, then you'll find EXE files in thie GitHhub.  At the moment only the Widget has an EXE file.  The realtime graph of confirmed cases is going through a lot of changes / development.  An EXE file should be available for it later today.
+
 
 
 ## Graphing the Confirmed Cases
@@ -79,6 +86,9 @@ https://www.who.int/emergencies/diseases/novel-coronavirus-2019
 
 
 
+# Contributing
+
+Focus is on expanding this software rather than rolling in suggested changes by other people.  Folk the repo and go crazy if you want to make changes.  Please understand that submitted a change doesn't mean it'll be automatically accepted.  If it's not and you believe you'll be upset by your suggestion not being used, then don't submit it.
 
 
 --------------------------------
