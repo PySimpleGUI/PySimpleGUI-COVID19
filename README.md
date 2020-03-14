@@ -85,10 +85,10 @@ https://www.who.int/emergencies/diseases/novel-coronavirus-2019
 [Download their daily PDF files](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports) that have the "Situation Report" for the most up to date information.
 
 
-
 # Contributing
 
 Focus is on expanding this software rather than rolling in suggested changes by other people.  Feel free to folk the repo and go crazy.  Please understand that submitted a change doesn't mean it'll be automatically accepted.  If it's not and you think you'll be upset, then perhaps skip submitting it.  You can always make suggestions by opening an Issue too.
+
 
 
 --------------------------------
