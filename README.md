@@ -85,10 +85,9 @@ https://www.who.int/emergencies/diseases/novel-coronavirus-2019
 [Download their daily PDF files](https://www.who.int/emergencies/diseases/novel-coronavirus-2019/situation-reports) that have the "Situation Report" for the most up to date information.
 
 
-
 # Contributing
 
-Focus is on expanding this software rather than rolling in suggested changes by other people.  Folk the repo and go crazy if you want to make changes.  Please understand that submitted a change doesn't mean it'll be automatically accepted.  If it's not and you believe you'll be upset by your suggestion not being used, then don't submit it.
+The focus is on completing the implementation for the software following a completed design.  Understand that submitting a change doesn't mean it's automatically accepted or that we'll even agree on approach or ideas.  If your suggestion is not used and you believe you'll be upset by this, then save everyone the grief and don't submit it.  It's my time that has being invested in this free software.  No one is asking you to spend time working on it.
 
 
 --------------------------------
