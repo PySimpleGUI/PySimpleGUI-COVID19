@@ -10,6 +10,17 @@ There are currently 2 tools checked in.
 1 - The COVID-19 Distance Widget that is from the PSG-Widgets repository
 2 - The COVID-19 Confirmed Cases Graphs
 
+## Requirements
+
+You need to install 2 packages for these tools
+
+1 - PySimpleGUI
+
+2 - geopy (requireed only for the Widget)
+
+These are easily installable via pip.
+
+
 ## Graphing the Confirmed Cases
 
 ![image](https://user-images.githubusercontent.com/46163555/76657691-d2fbf600-6548-11ea-9c37-9cc08d26a67b.png)
