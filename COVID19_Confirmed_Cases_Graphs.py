@@ -34,9 +34,9 @@ DATA_SIZE = (500,300)
 MAX_ROWS = 4
 MAX_COLS = 4
 
-sg.theme('Dark Purple 6')
+sg.theme('Dark Blue 17')
 
-DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Purple 6'}
+DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17'}
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
 
@@ -82,8 +82,6 @@ def change_settings(settings):
 
 def choose_locations(locations):
     locations = list(locations)
-    # locations.append('Worldwide')
-    # print(locations)
     defaults = ['Worldwide', 'US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Australia', 'Canada', 'Netherlands', ]
     max_col = 4
     row = []
