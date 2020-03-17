@@ -36,11 +36,14 @@ MAX_COLS = 4
 
 sg.theme('Dark Purple 6')
 
-DEFAULT_SETTINGS = {}
+DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Purple 6'}
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
 
 settings = {}
+
+date_of_final_datapoint = ''
+
 ########################################## SETTINGS ##########################################
 def load_settings():
     try:
@@ -60,7 +63,9 @@ def save_settings(settings):
 
 def change_settings(settings):
     layout = [[sg.T('Color Theme')],
-              [sg.Combo(sg.theme_list(), size=(20,20), key='-THEME-' )],
+              [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
+              [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
+              [sg.T('Display Cols', size=(15,1), justification='r'), sg.In(settings.get('cols',''), size=(4,1), key='-COLS-' )],
               [sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)],]
 
     window = sg.Window('Settings', layout, keep_on_top=True, border_depth=0)
@@ -69,6 +74,9 @@ def change_settings(settings):
 
     if event == 'Ok':
         settings['theme'] = values['-THEME-']
+        settings['rows'] = values['-ROWS-']
+        settings['cols'] = values['-COLS-']
+        save_settings(settings)
 
     return settings
 
@@ -76,8 +84,7 @@ def choose_locations(locations):
     locations = list(locations)
     # locations.append('Worldwide')
     # print(locations)
-    defaults = ['US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland',
-            'Australia', 'Austria', 'Netherlands', 'Worldwide']
+    defaults = ['Worldwide', 'US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Australia', 'Canada', 'Netherlands', ]
     max_col = 4
     row = []
     cb_layout = []
@@ -93,7 +100,7 @@ def choose_locations(locations):
     layout += cb_layout
     layout += [[sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)]]
 
-    window = sg.Window('Settings', layout, keep_on_top=True, border_depth=0)
+    window = sg.Window('Choose Locations', layout, keep_on_top=True, border_depth=0)
     event, values = window.read()
     window.close()
 
@@ -115,25 +122,24 @@ def download_data():
 
     # Add blank space for missing cities to prevent dropping columns
     for n, row in enumerate(data):
-        data[n] = "Unknown" + row if row[0] == "," else row
+        data[n] = " " + row if row[0] == "," else row
 
     # Split each row into a list of data
     data_split = [row for row in csvreader(data)]
 
     return data_split
 
+########################################## UPDATE WINDOW ##########################################
 
-def update_window(window, loc_data_dict, chosen_locations):
-    show = ['US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Sweden',
-            'Australia', 'Austria', 'Netherlands']
+def update_window(window, loc_data_dict, chosen_locations, settings):
+    MAX_ROWS, MAX_COLS = int(settings['rows']), int(settings['cols'])
     show = chosen_locations
-    drilldown = '-DRILLDOWN-' in show
     for i, loc in enumerate(show):
         if loc == '-DRILLDOWN-':
             continue
         if i >= MAX_COLS * MAX_ROWS:
             break
-        values = loc_data_dict[loc]
+        values = loc_data_dict[(loc, 'Total')]
         window[f'-TITLE-{i}'].update(f'{loc} {max(values)}')
         graph = window[i]
         # auto-scale the graph.  Will make this an option in the future
@@ -151,7 +157,7 @@ def update_window(window, loc_data_dict, chosen_locations):
                                         line_width=0,
                                         fill_color=sg.theme_text_color()) for i, graph_value in enumerate(values)]
 
-    window['-UPDATED-'].update('Updated: ' + datetime.now().strftime("%B %d %I:%M:%S %p"))
+    window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {date_of_final_datapoint}')
 
 ########################################## MAIN ##########################################
 
@@ -163,38 +169,44 @@ def update_window(window, loc_data_dict, chosen_locations):
 ##############################################################
 
 def prepare_data():
+    """
+    Downloads the CSV file and creates a dictionary containing the data
+    Dictionary:      Location (str,str) : Data [ int, int, int, ...  ]
+    :return:        Dict[(str,str):List[int]]
+    """
+    global date_of_final_datapoint
+
     data = download_data()
     header = data[0]
+    date_of_final_datapoint = header[-1]
     graph_data = [row[4:] for row in data[1:]]
     graph_values = []
     for row in graph_data:
-        for d in row:
-            graph_values.append([int(d) if d!= '' else 0 for d in row])
-    location = [f'{row[0]} {row[1]}' for row in data[1:]]
-    # make list of countries
-    locations = list(set([row[1] for row in data[1:]]))
-    locations.append('Worldwide')
+        graph_values.append([int(d) if d!= '' else 0 for d in row])
+    # make list of countries as tuples (country, privince/state)
+    locations = list(set([(row[1], row[0]) for row in data[1:]]))
+    locations.append(('Worldwide', ''))
     # Make single row of data per country that will be graphed
     # Location - Data dict.  For each location contains the totals for that location
-    # { string : list }
+    # { tuple : list }
     loc_data_dict = {}
     data_points = len(graph_data[0])
     for loc in locations:
+        loc_country = loc[0]
         totals = [0]*data_points
         for i, row in enumerate(data[1:]):
-            if loc == row[1] or loc == 'Worldwide':
+            if loc_country == row[1] or loc_country == 'Worldwide':
+                loc_data_dict[(loc_country, row[0])] = row[4:]
                 for j, d in enumerate(row[4:]):
                     totals[j] += int(d if d!= '' else 0)
-        loc_data_dict[loc] = totals
+        loc_data_dict[(loc_country, 'Total')] = totals
 
     return loc_data_dict
 
-def main(refresh_minutes):
 
-    loc_data_dict = prepare_data()
-    chosen_locations = choose_locations(loc_data_dict.keys())
-    if '-DRILLDOW-' in chosen_locations:
-        print('*** DRILLING DONW ***')
+def create_window(settings):
+    MAX_ROWS = int(settings['rows'])
+    MAX_COLS = int(settings['cols'])
     # Create grid of Graphs with titles
     graph_layout = [[]]
     for row in range(MAX_ROWS):
@@ -208,26 +220,44 @@ def main(refresh_minutes):
     layout = [[sg.T('×', font=('Arial Black', 16), enable_events=True, key='-QUIT-'),
                sg.Text('COVID-19 Cases By Region', font='Any 20'),],]
     layout += graph_layout
-    layout += [[sg.T(size=(40,1), font='Any 8', key='-UPDATED-')],
-                [sg.Button('Refresh'), sg.Exit()]]
+    layout += [ [sg.T(size=(80,2), font='Any 8', key='-UPDATED-')],
+                [sg.T('Settings', key='-SETTINGS-', enable_events=True),
+                 sg.T('Refresh', key='-REFRESH-', enable_events=True),
+                 sg.T('Exit', key='Exit', enable_events=True),]]
 
     window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=False, margins=(0,0), finalize=True)
 
-    update_window(window, loc_data_dict, chosen_locations)
+    return window
+
+def main(refresh_minutes):
+    settings = load_settings()
+    sg.theme(settings['theme'])
+    loc_data_dict = prepare_data()
+    keys = loc_data_dict.keys()
+    countries = set([k[0] for k in keys])
+    # chosen_locations = choose_locations(loc_data_dict.keys())
+    chosen_locations = choose_locations(countries)
+
+    window = create_window(settings)
+
+    update_window(window, loc_data_dict, chosen_locations, settings)
 
     while True:         # Event Loop
         event, values = window.read(timeout=refresh_minutes*60*1000)
         if event in (None, 'Exit', '-QUIT-'):
             break
-        sg.popup_quick_message('Updating data')
+        if event == '-SETTINGS-':
+            settings = change_settings(settings)
+            sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
+            window.close()
+            window = create_window(settings)
+        sg.popup_quick_message('Updating data', font='Any 20')
         loc_data_dict = prepare_data()
-        update_window(window, loc_data_dict, chosen_locations)
+        update_window(window, loc_data_dict, chosen_locations, settings)
 
     window.close()
 
 
 
 if __name__ == '__main__':
-    # settings = load_settings()
-    # sg.theme(settings['theme'])
     main(refresh_minutes=20)
