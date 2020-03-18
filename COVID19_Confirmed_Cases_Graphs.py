@@ -157,8 +157,8 @@ def update_window(window, loc_data_dict, chosen_locations, settings):
         graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
         # calculate how big the bars should be
         num_values = len(values)
-        bar_width_total = DATA_SIZE[0] // num_values
-        bar_width = bar_width_total * 2 // 3
+        bar_width_total = DATA_SIZE[0] / num_values
+        bar_width = bar_width_total * 2 / 3
         bar_width_spacing = bar_width_total
         # Draw the Graph
         graph.erase()
@@ -223,7 +223,7 @@ def create_window(settings):
         graph_row = []
         for col in range(MAX_COLS):
             graph = sg.Graph(GRAPH_SIZE, (0,0), DATA_SIZE, key=row*MAX_COLS+col, pad=(0,0))
-            graph_row += [sg.Column([[sg.T(size=(15,1), key=f'-TITLE-{row*MAX_COLS+col}')],[graph]], pad=(0,0))]
+            graph_row += [sg.Column([[sg.T(size=(30,1), key=f'-TITLE-{row*MAX_COLS+col}')],[graph]], pad=(0,0))]
         graph_layout += [graph_row]
 
     # Create the layout
@@ -236,7 +236,7 @@ def create_window(settings):
                  sg.T('Refresh', key='-REFRESH-', enable_events=True),
                  sg.T('Exit', key='Exit', enable_events=True),]]
 
-    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=False, margins=(0,0), finalize=True)
+    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=False, margins=(0,0), element_padding=(0,0), finalize=True)
 
     return window
 
@@ -264,7 +264,7 @@ def main(refresh_minutes):
         if event in (None, 'Exit', '-QUIT-'):
             break
         if event == '-SETTINGS-':
-            settings = change_settings(settings, chosen_locations)
+            settings = change_settings(settings)
             save_settings(settings, chosen_locations)
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
             window.close()
