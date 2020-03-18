@@ -143,8 +143,8 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
     # Erase all the graphs
     for row in range(MAX_ROWS):
         for col in range(MAX_COLS):
-            window[row*MAX_ROWS+col].erase()
-            window[f'-TITLE-{row*MAX_ROWS+col}'].update(f'')
+            window[row*MAX_COLS+col].erase()
+            window[f'-TITLE-{row*MAX_COLS+col}'].update(f'')
 
     date = loc_data_dict[('Header','')][-(subtract_days+1)]
     window['-DATE-'].update(date)
