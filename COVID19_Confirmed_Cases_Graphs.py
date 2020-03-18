@@ -6,7 +6,6 @@ from json import dump as jsondump
 from os import path
 from datetime import datetime
 
-
 """
     Graph COVID-19 Confirmed Cases
     
@@ -44,7 +43,6 @@ SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
 
 settings = {}
 
-date_of_final_datapoint = ''
 
 ########################################## SETTINGS ##########################################
 def load_settings():
@@ -70,6 +68,7 @@ def change_settings(settings):
               [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
               [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
               [sg.T('Display Cols', size=(15,1), justification='r'), sg.In(settings.get('cols',''), size=(4,1), key='-COLS-' )],
+              [sg.CBox('Autoscale Graphs', default=settings.get('autoscale',True), key='-AUTOSCALE-'), sg.T('Max Graph Value'), sg.In(settings.get('graphmax',''), size=(6,1), key='-GRAPH MAX-')],
               [sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)],]
 
     window = sg.Window('Settings', layout, keep_on_top=True, border_depth=0)
@@ -80,6 +79,8 @@ def change_settings(settings):
         settings['theme'] = values['-THEME-']
         settings['rows'] = values['-ROWS-']
         settings['cols'] = values['-COLS-']
+        settings['autoscale'] = values['-AUTOSCALE-']
+        settings['graphmax'] = values['-GRAPH MAX-']
 
     return settings
 
@@ -135,7 +136,7 @@ def download_data():
 
 ########################################## UPDATE WINDOW ##########################################
 
-def update_window(window, loc_data_dict, chosen_locations, settings):
+def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days):
     MAX_ROWS, MAX_COLS = int(settings['rows']), int(settings['cols'])
     show = chosen_locations
 
@@ -145,15 +146,23 @@ def update_window(window, loc_data_dict, chosen_locations, settings):
             window[row*MAX_ROWS+col].erase()
             window[f'-TITLE-{row*MAX_ROWS+col}'].update(f'')
 
+    date = loc_data_dict[('Header','')][-(subtract_days+1)]
+    window['-DATE-'].update(date)
     # Draw the graphs
     for i, loc in enumerate(show):
         if i >= MAX_COLS * MAX_ROWS:
             break
         values = loc_data_dict[(loc, 'Total')]
+        if subtract_days:
+            values = values[:-subtract_days]
+        # print(values)
         window[f'-TITLE-{i}'].update(f'{loc} {max(values)}')
         graph = window[i]
         # auto-scale the graph.  Will make this an option in the future
-        max_value = max(values)
+        if settings.get('autoscale', True):
+            max_value = max(values)
+        else:
+            max_value = int(settings.get('graphmax', max(values)))
         graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
         # calculate how big the bars should be
         num_values = len(values)
@@ -162,12 +171,14 @@ def update_window(window, loc_data_dict, chosen_locations, settings):
         bar_width_spacing = bar_width_total
         # Draw the Graph
         graph.erase()
-        bar_ids = [graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
+        for i, graph_value in enumerate(values):
+            if graph_value:
+                graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
                                         bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
                                         line_width=0,
-                                        fill_color=sg.theme_text_color()) for i, graph_value in enumerate(values)]
+                                        fill_color=sg.theme_text_color())
 
-    window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {date_of_final_datapoint}')
+    window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {loc_data_dict[("Header","")][-1]}')
 
 ########################################## MAIN ##########################################
 
@@ -184,11 +195,9 @@ def prepare_data():
     Dictionary:      Location (str,str) : Data [ int, int, int, ...  ]
     :return:        Dict[(str,str):List[int]]
     """
-    global date_of_final_datapoint
 
     data = download_data()
-    header = data[0]
-    date_of_final_datapoint = header[-1]
+    header = data[0][4:]
     graph_data = [row[4:] for row in data[1:]]
     graph_values = []
     for row in graph_data:
@@ -211,6 +220,8 @@ def prepare_data():
                     totals[j] += int(d if d!= '' else 0)
         loc_data_dict[(loc_country, 'Total')] = totals
 
+    loc_data_dict[('Header','')] = header
+
     return loc_data_dict
 
 
@@ -228,15 +239,22 @@ def create_window(settings):
 
     # Create the layout
     layout = [[sg.T('×', font=('Arial Black', 16), enable_events=True, key='-QUIT-'),
-               sg.Text('COVID-19 Cases By Region', font='Any 20'),],]
+               sg.T('COVID-19 Cases By Region', font='Any 20'),
+               sg.T(size=(15,1), font='Any 20', key='-DATE-')],]
     layout += graph_layout
-    layout += [ [sg.T(size=(80,2), font='Any 8', key='-UPDATED-')],
-                [sg.T('Settings', key='-SETTINGS-', enable_events=True),
-                 sg.T('Locations', key='-LOCATIONS-', enable_events=True),
-                 sg.T('Refresh', key='-REFRESH-', enable_events=True),
-                 sg.T('Exit', key='Exit', enable_events=True),]]
+    layout += [[sg.T('Way-back machine'),
+                sg.Slider((0,100), size=(30,15), orientation='h', enable_events=True, key='-SLIDER-'),
+                sg.T('Rewind this many days')]]
+    layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
+                 sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
+                 sg.T('     Refresh', key='-REFRESH-', enable_events=True),
+                 sg.T('     Exit', key='Exit', enable_events=True),
+                 sg.T(' '*20),
+                 sg.T(size=(80,2), font='Any 8', key='-UPDATED-')]]
 
-    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=True, no_titlebar=False, margins=(0,0), element_padding=(0,0), finalize=True)
+    window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=False, no_titlebar=False, margins=(0,0),  finalize=True)
+
+    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit']]
 
     return window
 
@@ -246,18 +264,16 @@ def main(refresh_minutes):
     loc_data_dict = prepare_data()
     keys = loc_data_dict.keys()
     countries = set([k[0] for k in keys])
-    # chosen_locations = choose_locations(loc_data_dict.keys())
     chosen_locations = settings.get('locations',[])
     if not chosen_locations:
         chosen_locations = choose_locations(countries, [])
         save_settings(settings, chosen_locations)
-    # chosen_locations = choose_locations(countries, chosen_locations)
-    # save_settings(settings, chosen_locations)
-
 
     window = create_window(settings)
 
-    update_window(window, loc_data_dict, chosen_locations, settings)
+    window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
+
+    update_window(window, loc_data_dict, chosen_locations, settings, 0)
 
     while True:         # Event Loop
         event, values = window.read(timeout=refresh_minutes*60*1000)
@@ -269,13 +285,17 @@ def main(refresh_minutes):
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
             window.close()
             window = create_window(settings)
+            window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
         elif event == '-LOCATIONS-':
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
+        elif event == '-SLIDER-':
+            update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']))
+            continue
 
         sg.popup_quick_message('Updating data', font='Any 20')
         loc_data_dict = prepare_data()
-        update_window(window, loc_data_dict, chosen_locations, settings)
+        update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']))
 
     window.close()
 
