@@ -136,47 +136,55 @@ def download_data():
 
 ########################################## UPDATE WINDOW ##########################################
 
+def draw_graph(window, location, graph_num, values, settings):
+    # update title
+    try:
+        delta = (values[-1]-values[-2])/values[-2]*100
+        up = values[-1]-values[-2]
+    except:
+        delta = up = 0
+    window[f'-TITLE-{graph_num}'].update(f'{location} {max(values):,} ↑ {up:,} Δ {delta:2.0f}%')
+    graph = window[graph_num]
+    # auto-scale the graph.  Will make this an option in the future
+    if settings.get('autoscale', True):
+        max_value = max(values)
+    else:
+        max_value = int(settings.get('graphmax', max(values)))
+    graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
+    # calculate how big the bars should be
+    num_values = len(values)
+    bar_width_total = DATA_SIZE[0] / num_values
+    bar_width = bar_width_total * 2 / 3
+    bar_width_spacing = bar_width_total
+    # Draw the Graph
+    graph.erase()
+    for i, graph_value in enumerate(values):
+        if graph_value:
+            graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
+                                 bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
+                                 line_width=0,
+                                 fill_color=sg.theme_text_color())
+
+
 def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days):
     MAX_ROWS, MAX_COLS = int(settings['rows']), int(settings['cols'])
-    show = chosen_locations
-
     # Erase all the graphs
     for row in range(MAX_ROWS):
         for col in range(MAX_COLS):
             window[row*MAX_COLS+col].erase()
-            window[f'-TITLE-{row*MAX_COLS+col}'].update(f'')
-
+            window[f'-TITLE-{row*MAX_COLS+col}'].update('')
+    # Display date of last data point
     date = loc_data_dict[('Header','')][-(subtract_days+1)]
     window['-DATE-'].update(date)
     # Draw the graphs
-    for i, loc in enumerate(show):
+    for i, loc in enumerate(chosen_locations):
         if i >= MAX_COLS * MAX_ROWS:
             break
         values = loc_data_dict[(loc, 'Total')]
         if subtract_days:
             values = values[:-subtract_days]
-        # print(values)
-        window[f'-TITLE-{i}'].update(f'{loc} {max(values)}')
-        graph = window[i]
-        # auto-scale the graph.  Will make this an option in the future
-        if settings.get('autoscale', True):
-            max_value = max(values)
-        else:
-            max_value = int(settings.get('graphmax', max(values)))
-        graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
-        # calculate how big the bars should be
-        num_values = len(values)
-        bar_width_total = DATA_SIZE[0] / num_values
-        bar_width = bar_width_total * 2 / 3
-        bar_width_spacing = bar_width_total
-        # Draw the Graph
-        graph.erase()
-        for i, graph_value in enumerate(values):
-            if graph_value:
-                graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
-                                        bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
-                                        line_width=0,
-                                        fill_color=sg.theme_text_color())
+
+        draw_graph(window, loc, i, values, settings)
 
     window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {loc_data_dict[("Header","")][-1]}')
 
@@ -239,7 +247,7 @@ def create_window(settings):
 
     # Create the layout
     layout = [[sg.T('×', font=('Arial Black', 16), enable_events=True, key='-QUIT-'),
-               sg.T('COVID-19 Cases By Region', font='Any 20'),
+               sg.T('COVID-19 Leaderboard - Cases By Region      ', font='Any 20'),
                sg.T(size=(15,1), font='Any 20', key='-DATE-')],]
     layout += graph_layout
     layout += [[sg.T('Way-back machine'),
