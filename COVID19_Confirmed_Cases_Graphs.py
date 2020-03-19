@@ -90,7 +90,7 @@ def choose_locations(locations, chosen_locations):
         defaults = DEFAULT_LOCATIONS
     else:
         defaults = chosen_locations
-    max_col = 4
+    max_col = 6
     row = []
     cb_layout = []
     for i, location in enumerate(sorted(locations)):
@@ -100,7 +100,6 @@ def choose_locations(locations, chosen_locations):
             row = []
     cb_layout += [row]
 
-
     layout = [[sg.T('Choose Locations')]]
     layout += cb_layout
     layout += [[sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)]]
@@ -109,10 +108,14 @@ def choose_locations(locations, chosen_locations):
     event, values = window.read()
     window.close()
 
-    locations_selected = []
-    for key in values.keys():
-        if values[key]:
-            locations_selected.append(key)
+    if event == 'Ok':
+        locations_selected = []
+        for key in values.keys():
+            if values[key]:
+                locations_selected.append(key)
+    else:
+        locations_selected = chosen_locations
+
     return locations_selected
 
 
@@ -149,7 +152,10 @@ def draw_graph(window, location, graph_num, values, settings):
     if settings.get('autoscale', True):
         max_value = max(values)
     else:
-        max_value = int(settings.get('graphmax', max(values)))
+        try:
+            max_value = int(settings.get('graphmax', max(values)))
+        except:
+            max_value = max(values)
     graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
     # calculate how big the bars should be
     num_values = len(values)
@@ -306,7 +312,6 @@ def main(refresh_minutes):
         update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']))
 
     window.close()
-
 
 
 if __name__ == '__main__':
