@@ -30,13 +30,18 @@ If you don't want to bother with setting up a Python environment and just want t
 
 ## Graphing the Confirmed Cases
 
-![image](https://user-images.githubusercontent.com/46163555/77016602-83556a00-694e-11ea-8020-6e57f5176338.png)
-
+![SNAG-0702](https://user-images.githubusercontent.com/46163555/77162492-75086a80-6a82-11ea-9b96-4737bab0a7a6.jpg)
 
 
 This is an exciting little piece of software.  It's much like a grid of graphs that Tableau creates.  This format is a fantastic way to display datasets in a way that can be quickly and easily compared visually.
 
 Rather than using Matplotlib or any other graphing packages, this program uses PySimpleGUI's built-in drawing primitives.  
+
+The primary features are
+
+* Graph of active cases by region
+* Can step back in time to study the progression
+* Forecasted values based on growth rate you define
 
 ### Choose Locations
 
