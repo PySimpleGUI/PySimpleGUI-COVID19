@@ -33,6 +33,7 @@ GRAPH_SIZE = (300,150)
 DATA_SIZE = (500,300)
 MAX_ROWS = 4
 MAX_COLS = 4
+DEFAULT_GROWTH_RATE = 1.25      # default for forecasting
 
 sg.theme('Dark Blue 17')
 
@@ -83,6 +84,7 @@ def change_settings(settings):
         settings['graphmax'] = values['-GRAPH MAX-']
 
     return settings
+
 
 def choose_locations(locations, chosen_locations):
     locations = list(locations)
@@ -139,14 +141,24 @@ def download_data():
 
 ########################################## UPDATE WINDOW ##########################################
 
-def draw_graph(window, location, graph_num, values, settings):
+def estimate_future(data, num_additional, rate):
+    new_data = [x for x in data]
+    for i in range(num_additional):
+        new_data.append(new_data[-1]*rate)
+    return new_data
+
+
+def draw_graph(window, location, graph_num, values, settings, future_days):
     # update title
     try:
         delta = (values[-1]-values[-2])/values[-2]*100
         up = values[-1]-values[-2]
     except:
         delta = up = 0
-    window[f'-TITLE-{graph_num}'].update(f'{location} {max(values):,} ↑ {up:,} Δ {delta:2.0f}%')
+    if future_days:
+        window[f'-TITLE-{graph_num}'].update(f'{location} EST in {future_days} days\n{int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
+    else:
+        window[f'-TITLE-{graph_num}'].update(f'{location} {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
     graph = window[graph_num]
     # auto-scale the graph.  Will make this an option in the future
     if settings.get('autoscale', True):
@@ -165,32 +177,49 @@ def draw_graph(window, location, graph_num, values, settings):
     # Draw the Graph
     graph.erase()
     for i, graph_value in enumerate(values):
+        if i < num_values-future_days:
+            bar_color = sg.theme_text_color()
+        else:
+            bar_color = 'red'
         if graph_value:
             graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
                                  bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
                                  line_width=0,
-                                 fill_color=sg.theme_text_color())
+                                 fill_color=bar_color)
 
 
-def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days):
-    MAX_ROWS, MAX_COLS = int(settings['rows']), int(settings['cols'])
+def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days, future_days, growth_rate):
+    max_rows, max_cols = int(settings['rows']), int(settings['cols'])
     # Erase all the graphs
-    for row in range(MAX_ROWS):
-        for col in range(MAX_COLS):
-            window[row*MAX_COLS+col].erase()
-            window[f'-TITLE-{row*MAX_COLS+col}'].update('')
+    for row in range(max_rows):
+        for col in range(max_cols):
+            window[row*max_cols+col].erase()
+            window[f'-TITLE-{row*max_cols+col}'].update('')
     # Display date of last data point
     date = loc_data_dict[('Header','')][-(subtract_days+1)]
     window['-DATE-'].update(date)
     # Draw the graphs
     for i, loc in enumerate(chosen_locations):
-        if i >= MAX_COLS * MAX_ROWS:
+        if i >= max_cols * max_rows:
             break
         values = loc_data_dict[(loc, 'Total')]
         if subtract_days:
             values = values[:-subtract_days]
 
-        draw_graph(window, loc, i, values, settings)
+        draw_graph(window, loc, i, values, settings, 0)
+
+    starting_graph = i+1
+
+    if future_days:
+        for i, loc in enumerate(chosen_locations):
+            graph_num = starting_graph + i
+            if graph_num >= max_cols * max_rows:
+                break
+            values = loc_data_dict[(loc, 'Total')]
+            new_values = estimate_future(values, future_days, growth_rate)
+
+            draw_graph(window, loc, graph_num, new_values, settings, future_days)
+
 
     window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {loc_data_dict[("Header","")][-1]}')
 
@@ -240,15 +269,14 @@ def prepare_data():
 
 
 def create_window(settings):
-    MAX_ROWS = int(settings['rows'])
-    MAX_COLS = int(settings['cols'])
+    max_rows, max_cols = int(settings['rows']), int(settings['cols'])
     # Create grid of Graphs with titles
     graph_layout = [[]]
-    for row in range(MAX_ROWS):
+    for row in range(max_rows):
         graph_row = []
-        for col in range(MAX_COLS):
-            graph = sg.Graph(GRAPH_SIZE, (0,0), DATA_SIZE, key=row*MAX_COLS+col, pad=(0,0))
-            graph_row += [sg.Column([[sg.T(size=(30,1), key=f'-TITLE-{row*MAX_COLS+col}')],[graph]], pad=(0,0))]
+        for col in range(max_cols):
+            graph = sg.Graph(GRAPH_SIZE, (0,0), DATA_SIZE, key=row*max_cols+col, pad=(0,0))
+            graph_row += [sg.Column([[sg.T(size=(30,2), key=f'-TITLE-{row*max_cols+col}')],[graph]], pad=(0,0))]
         graph_layout += [graph_row]
 
     # Create the layout
@@ -258,13 +286,19 @@ def create_window(settings):
     layout += graph_layout
     layout += [[sg.T('Way-back machine'),
                 sg.Slider((0,100), size=(30,15), orientation='h', enable_events=True, key='-SLIDER-'),
-                sg.T('Rewind this many days')]]
+                sg.T('Rewind this many days')],
+               [sg.CB('Enable Forecasting', enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'), sg.I(str(DEFAULT_GROWTH_RATE), size=(5,1), key='-GROWTH RATE-'),
+                sg.T('Forecast this many days into the future'),
+                sg.Slider((0, 100), size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
+                ]]
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                  sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
                  sg.T('     Refresh', key='-REFRESH-', enable_events=True),
                  sg.T('     Exit', key='Exit', enable_events=True),
                  sg.T(' '*20),
-                 sg.T(size=(80,2), font='Any 8', key='-UPDATED-')]]
+                 sg.T(size=(40,2), font='Any 8', key='-UPDATED-'),
+                 sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19'+'\nCreated using PySimpleGUI', size=(None, 2), font='Any 8'),
+                ]]
 
     window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=False, no_titlebar=False, margins=(0,0),  finalize=True)
 
@@ -287,7 +321,7 @@ def main(refresh_minutes):
 
     window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
 
-    update_window(window, loc_data_dict, chosen_locations, settings, 0)
+    update_window(window, loc_data_dict, chosen_locations, settings, 0, 0, 0)
 
     while True:         # Event Loop
         event, values = window.read(timeout=refresh_minutes*60*1000)
@@ -303,13 +337,21 @@ def main(refresh_minutes):
         elif event == '-LOCATIONS-':
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
-        elif event == '-SLIDER-':
-            update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']))
-            continue
 
-        sg.popup_quick_message('Updating data', font='Any 20')
-        loc_data_dict = prepare_data()
-        update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']))
+        if event in (sg.TIMEOUT_KEY, '-REFRESH-'):
+            sg.popup_quick_message('Updating data', font='Any 20')
+            loc_data_dict = prepare_data()
+        if values['-FORECAST-']:
+            try:
+                growth_rate = float(values['-GROWTH RATE-'])
+            except:
+                growth_rate = 1.0
+                window['-GROWTH RATE-'](1.0)
+            future_days = int(values['-FUTURE SLIDER-'])
+        else:
+            growth_rate = future_days = 0
+
+        update_window(window, loc_data_dict, chosen_locations, settings, int(values['-SLIDER-']), future_days, growth_rate)
 
     window.close()
 
