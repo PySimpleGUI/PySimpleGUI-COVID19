@@ -344,7 +344,7 @@ def main(refresh_minutes):
             if values['-FORECAST-']:        # changed to TRUE
                 settings['rows'] = settings['rows']*2
             else:
-                settings['rows'] = settings['rows']/2
+                settings['rows'] = settings['rows']//2
             settings['forecasting'] = values['-FORECAST-']
             save_settings(settings, chosen_locations)
             window.close()
