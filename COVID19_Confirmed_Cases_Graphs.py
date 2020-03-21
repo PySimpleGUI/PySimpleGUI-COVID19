@@ -69,7 +69,9 @@ def change_settings(settings):
               [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
               [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
               [sg.T('Display Cols', size=(15,1), justification='r'), sg.In(settings.get('cols',''), size=(4,1), key='-COLS-' )],
-              [sg.CBox('Autoscale Graphs', default=settings.get('autoscale',True), key='-AUTOSCALE-'), sg.T('Max Graph Value'), sg.In(settings.get('graphmax',''), size=(6,1), key='-GRAPH MAX-')],
+              [sg.CBox('Autoscale Graphs', default=settings.get('autoscale',True), key='-AUTOSCALE-'),
+               sg.T('Max Graph Value'),
+               sg.In(settings.get('graphmax',''), size=(6,1), key='-GRAPH MAX-')],
               [sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)],]
 
     window = sg.Window('Settings', layout, keep_on_top=True, border_depth=0)
@@ -144,7 +146,8 @@ def download_data():
 def estimate_future(data, num_additional, rate):
     new_data = [x for x in data]
     for i in range(num_additional):
-        new_data.append(new_data[-1]*rate)
+        # new_data.append(new_data[-1]*rate)
+        new_data.append(new_data[-1] + ((new_data[-1]-new_data[-2]) * rate))
     return new_data
 
 
