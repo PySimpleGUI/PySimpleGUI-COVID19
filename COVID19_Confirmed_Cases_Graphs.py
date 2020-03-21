@@ -37,7 +37,7 @@ DEFAULT_GROWTH_RATE = 1.25      # default for forecasting
 
 sg.theme('Dark Blue 17')
 
-DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17'}
+DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17', 'forecasting':False}
 DEFAULT_LOCATIONS = ['Worldwide', 'US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Australia', 'Canada', 'Netherlands', ]
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
@@ -80,8 +80,8 @@ def change_settings(settings):
 
     if event == 'Ok':
         settings['theme'] = values['-THEME-']
-        settings['rows'] = values['-ROWS-']
-        settings['cols'] = values['-COLS-']
+        settings['rows'] = int(values['-ROWS-'])
+        settings['cols'] = int(values['-COLS-'])
         settings['autoscale'] = values['-AUTOSCALE-']
         settings['graphmax'] = values['-GRAPH MAX-']
 
@@ -290,9 +290,9 @@ def create_window(settings):
     layout += [[sg.T('Way-back machine'),
                 sg.Slider((0,100), size=(30,15), orientation='h', enable_events=True, key='-SLIDER-'),
                 sg.T('Rewind this many days')],
-               [sg.CB('Enable Forecasting', enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'), sg.I(str(DEFAULT_GROWTH_RATE), size=(5,1), key='-GROWTH RATE-'),
+               [sg.CB('Enable Forecasting', default=settings.get('forecasting',False), enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'), sg.I(str(DEFAULT_GROWTH_RATE), size=(5,1), key='-GROWTH RATE-'),
                 sg.T('Forecast this many days into the future'),
-                sg.Slider((0, 100), size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
+                sg.Slider((0, 100), default_value=1, size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
                 ]]
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                  sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
@@ -324,7 +324,7 @@ def main(refresh_minutes):
 
     window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
 
-    update_window(window, loc_data_dict, chosen_locations, settings, 0, 0, 0)
+    update_window(window, loc_data_dict, chosen_locations, settings, 1, 1, DEFAULT_GROWTH_RATE)
 
     while True:         # Event Loop
         event, values = window.read(timeout=refresh_minutes*60*1000)
@@ -340,10 +340,21 @@ def main(refresh_minutes):
         elif event == '-LOCATIONS-':
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
+        elif event == '-FORECAST-':
+            if values['-FORECAST-']:        # changed to TRUE
+                settings['rows'] = settings['rows']*2
+            else:
+                settings['rows'] = settings['rows']/2
+            settings['forecasting'] = values['-FORECAST-']
+            save_settings(settings, chosen_locations)
+            window.close()
+            window = create_window(settings)
+            window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
 
         if event in (sg.TIMEOUT_KEY, '-REFRESH-'):
             sg.popup_quick_message('Updating data', font='Any 20')
             loc_data_dict = prepare_data()
+
         if values['-FORECAST-']:
             try:
                 growth_rate = float(values['-GROWTH RATE-'])
