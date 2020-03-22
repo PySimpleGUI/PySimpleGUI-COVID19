@@ -213,10 +213,7 @@ def draw_graph(window, location, graph_num, values, settings, future_days):
     # Draw the Graph
     graph.erase()
     for i, graph_value in enumerate(values):
-        if i < num_values-future_days:
-            bar_color = sg.theme_text_color()
-        else:
-            bar_color = 'red'
+        bar_color = sg.theme_text_color()  if i < num_values-future_days else 'red'
         if graph_value:
             graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
                                  bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
@@ -369,7 +366,7 @@ def main(refresh_minutes):
     window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
     window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide","Total")])-1} days')
 
-    update_window(window, loc_data_dict, chosen_locations, settings, 1, 1, DEFAULT_GROWTH_RATE)
+    update_window(window, loc_data_dict, chosen_locations, settings, 0, 1, DEFAULT_GROWTH_RATE)
 
     while True:         # Event Loop
         event, values = window.read(timeout=refresh_minutes*60*1000)
