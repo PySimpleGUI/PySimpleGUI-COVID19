@@ -24,6 +24,9 @@ If you don't want to bother with setting up a Python environment and just want t
 
 # COVID-19 Grid of Graphs Interactive Data Display
 
+![image](https://user-images.githubusercontent.com/46163555/77252319-6e682780-6c29-11ea-9656-1f2ed767b58c.png)
+
+
 ## Introduction
 
 Viewing multiple series of data as a grid of graphs enables the viewer to quickly and easily get both the big picture as well as information on indivdual countries.  It's much like the way Tableau displays data.
