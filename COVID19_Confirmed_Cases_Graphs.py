@@ -5,6 +5,8 @@ from json import load as jsonload
 from json import dump as jsondump
 from os import path
 from datetime import datetime
+from webbrowser import open as webopen
+
 
 """
     Graph COVID-19 Confirmed Cases
@@ -31,14 +33,25 @@ NUM_BARS = 20
 EDGE_OFFSET = 3
 GRAPH_SIZE = (300,150)
 DATA_SIZE = (500,300)
-MAX_ROWS = 4
+MAX_ROWS = 2
 MAX_COLS = 4
 DEFAULT_GROWTH_RATE = 1.25      # default for forecasting
+DISPLAY_DAYS = 30               # default number of days to display
+MAX_FORECASTED_DAYS = 100
+
+LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+
+LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
+
+
 
 sg.theme('Dark Blue 17')
 
-DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17', 'forecasting':False}
-DEFAULT_LOCATIONS = ['Worldwide', 'US', 'China', 'Italy', 'Iran', 'Korea, South', 'France', 'Spain', 'Germany', 'United Kingdom', 'Japan', 'Norway', 'Switzerland', 'Australia', 'Canada', 'Netherlands', ]
+
+DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17', 'forecasting':False,
+                    'graph_x_size':GRAPH_SIZE[0], 'graph_y_size':GRAPH_SIZE[1], 'display days':DISPLAY_DAYS,
+                    'data source':'confirmed'}
+DEFAULT_LOCATIONS = ['Worldwide', 'US', 'China', 'Italy', 'Iran',  'France', 'Spain',  'United Kingdom', ]
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
 
@@ -65,13 +78,17 @@ def save_settings(settings, chosen_locations=None):
 
 
 def change_settings(settings):
+    data_is_deaths = settings.get('data source', 'confirmed') == 'deaths'
     layout = [[sg.T('Color Theme')],
+              [sg.T('Display'), sg.Radio('Deaths', 1, default=data_is_deaths, key='-DATA DEATHS-'), sg.Radio('Confirmed Cases', 1, default=not data_is_deaths, key='-DATA CONFIRMED-')],
               [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
               [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
               [sg.T('Display Cols', size=(15,1), justification='r'), sg.In(settings.get('cols',''), size=(4,1), key='-COLS-' )],
+              [sg.T('Graph size in pixels'), sg.In(settings.get('graph_x_size',''), size=(4,1), key='-GRAPHX-'), sg.T('X'), sg.In(settings.get('graph_y_size',''), size=(4,1), key='-GRAPHY-')],
               [sg.CBox('Autoscale Graphs', default=settings.get('autoscale',True), key='-AUTOSCALE-'),
                sg.T('Max Graph Value'),
                sg.In(settings.get('graphmax',''), size=(6,1), key='-GRAPH MAX-')],
+              [sg.T('Number of days to display (0 for all)'), sg.In(settings.get('display days',''), size=(4,1), key='-DISPLAY DAYS-')],
               [sg.B('Ok', border_width=0, bind_return_key=True), sg.B('Cancel', border_width=0)],]
 
     window = sg.Window('Settings', layout, keep_on_top=True, border_depth=0)
@@ -84,6 +101,17 @@ def change_settings(settings):
         settings['cols'] = int(values['-COLS-'])
         settings['autoscale'] = values['-AUTOSCALE-']
         settings['graphmax'] = values['-GRAPH MAX-']
+        try:
+            settings['graph_x_size'] = int(values['-GRAPHX-'])
+            settings['graph_y_size'] = int(values['-GRAPHY-'])
+        except:
+            settings['graph_x_size'] = GRAPH_SIZE[0]
+            settings['graph_y_size'] = GRAPH_SIZE[1]
+        try:
+            settings['display days'] = int(values['-DISPLAY DAYS-'])
+        except:
+            settings['display days'] = 0
+        settings['data source'] = 'deaths' if values['-DATA DEATHS-'] else 'confirmed'
 
     return settings
 
@@ -126,10 +154,10 @@ def choose_locations(locations, chosen_locations):
 
 ########################################## DOWNLOAD DATA ##########################################
 
-def download_data():
+def download_data(link):
 
     # Download and parse the CSV file
-    file_url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv"
+    file_url = link
     data = [d.decode('utf-8') for d in request.urlopen(file_url).readlines()]
 
     # Add blank space for missing cities to prevent dropping columns
@@ -158,6 +186,11 @@ def draw_graph(window, location, graph_num, values, settings, future_days):
         up = values[-1]-values[-2]
     except:
         delta = up = 0
+
+    start = len(values)-settings['display days']
+    if start < 0 or settings['display days'] == 0:
+        start = 0
+    values = values[start:]
     if future_days:
         window[f'-TITLE-{graph_num}'].update(f'{location} EST in {future_days} days\n{int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
     else:
@@ -199,8 +232,13 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
             window[row*max_cols+col].erase()
             window[f'-TITLE-{row*max_cols+col}'].update('')
     # Display date of last data point
-    date = loc_data_dict[('Header','')][-(subtract_days+1)]
-    window['-DATE-'].update(date)
+    header = loc_data_dict[('Header','')]
+    end_date = header[-(subtract_days+1)]
+    start = len(header)-settings['display days']-(subtract_days+1)
+    if start < 0 or settings['display days'] == 0:
+        start = 0
+    start_date = header[start]
+    window['-DATE-'].update(f'{start_date} - {end_date}')
     # Draw the graphs
     for i, loc in enumerate(chosen_locations):
         if i >= max_cols * max_rows:
@@ -235,14 +273,14 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
 # State/Province    Country     Lat     Long    1/22    1/23 #
 ##############################################################
 
-def prepare_data():
+def prepare_data(link):
     """
     Downloads the CSV file and creates a dictionary containing the data
     Dictionary:      Location (str,str) : Data [ int, int, int, ...  ]
     :return:        Dict[(str,str):List[int]]
     """
 
-    data = download_data()
+    data = download_data(link)
     header = data[0][4:]
     graph_data = [row[4:] for row in data[1:]]
     graph_values = []
@@ -273,26 +311,31 @@ def prepare_data():
 
 def create_window(settings):
     max_rows, max_cols = int(settings['rows']), int(settings['cols'])
+    graph_size = int(settings['graph_x_size']), int(settings['graph_y_size'])
     # Create grid of Graphs with titles
     graph_layout = [[]]
     for row in range(max_rows):
         graph_row = []
         for col in range(max_cols):
-            graph = sg.Graph(GRAPH_SIZE, (0,0), DATA_SIZE, key=row*max_cols+col, pad=(0,0))
+            graph = sg.Graph(graph_size, (0,0), DATA_SIZE, key=row*max_cols+col, pad=(0,0))
             graph_row += [sg.Column([[sg.T(size=(30,2), key=f'-TITLE-{row*max_cols+col}')],[graph]], pad=(0,0))]
         graph_layout += [graph_row]
 
+    if settings.get('data source','confirmed') == 'confirmed':
+        heading = 'COVID-19 Leaderboard - Cases By Region      '
+    else:
+        heading = 'COVID-19 Leaderboard - Deaths By Region      '
+
     # Create the layout
-    layout = [[sg.T('×', font=('Arial Black', 16), enable_events=True, key='-QUIT-'),
-               sg.T('COVID-19 Leaderboard - Cases By Region      ', font='Any 20'),
+    layout = [[sg.T(heading, font='Any 20'),
                sg.T(size=(15,1), font='Any 20', key='-DATE-')],]
     layout += graph_layout
     layout += [[sg.T('Way-back machine'),
                 sg.Slider((0,100), size=(30,15), orientation='h', enable_events=True, key='-SLIDER-'),
-                sg.T('Rewind this many days')],
+                sg.T(f'Rewind up to 00000 days', key='-REWIND MESSAGE-')],
                [sg.CB('Enable Forecasting', default=settings.get('forecasting',False), enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'), sg.I(str(DEFAULT_GROWTH_RATE), size=(5,1), key='-GROWTH RATE-'),
-                sg.T('Forecast this many days into the future'),
-                sg.Slider((0, 100), default_value=1, size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
+                sg.T(f'Forecast up to {MAX_FORECASTED_DAYS} days'),
+                sg.Slider((0, MAX_FORECASTED_DAYS), default_value=1, size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
                 ]]
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                  sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
@@ -300,19 +343,20 @@ def create_window(settings):
                  sg.T('     Exit', key='Exit', enable_events=True),
                  sg.T(' '*20),
                  sg.T(size=(40,2), font='Any 8', key='-UPDATED-'),
-                 sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19'+'\nCreated using PySimpleGUI', size=(None, 2), font='Any 8'),
+                 sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19'+'\nCreated using PySimpleGUI', size=(None, 2), enable_events=True, font='Any 8', key='-SOURCE LINK-'),
                 ]]
 
     window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=False, no_titlebar=False, margins=(0,0),  finalize=True)
 
-    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit']]
+    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-']]
 
     return window
 
 def main(refresh_minutes):
     settings = load_settings()
     sg.theme(settings['theme'])
-    loc_data_dict = prepare_data()
+    data_link = LINK_CONFIRMED_DATA if settings.get('data source','confirmed') == 'confirmed' else LINK_DEATHS_DATA
+    loc_data_dict = prepare_data(data_link)
     keys = loc_data_dict.keys()
     countries = set([k[0] for k in keys])
     chosen_locations = settings.get('locations',[])
@@ -323,6 +367,7 @@ def main(refresh_minutes):
     window = create_window(settings)
 
     window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
+    window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide","Total")])-1} days')
 
     update_window(window, loc_data_dict, chosen_locations, settings, 1, 1, DEFAULT_GROWTH_RATE)
 
@@ -330,18 +375,23 @@ def main(refresh_minutes):
         event, values = window.read(timeout=refresh_minutes*60*1000)
         if event in (None, 'Exit', '-QUIT-'):
             break
-        if event == '-SETTINGS-':
+        if event == '-SETTINGS-':           # "Settings" at bottom of window
             settings = change_settings(settings)
             save_settings(settings, chosen_locations)
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
+            new_data_link = LINK_CONFIRMED_DATA if settings.get('data source', 'confirmed') == 'confirmed' else LINK_DEATHS_DATA
+            if new_data_link != data_link:
+                data_link = new_data_link
+                loc_data_dict = prepare_data(data_link)
             window.close()
             window = create_window(settings)
             window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
-        elif event == '-LOCATIONS-':
+            window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide", "Total")]) - 1} days')
+        elif event == '-LOCATIONS-':        # "Location" text at bottom of window
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
-        elif event == '-FORECAST-':
-            if values['-FORECAST-']:        # changed to TRUE
+        elif event == '-FORECAST-':         # Changed Forecast checkbox
+            if values['-FORECAST-']:        # changed to TRUE so double the rows
                 settings['rows'] = settings['rows']*2
             else:
                 settings['rows'] = settings['rows']//2
@@ -350,10 +400,13 @@ def main(refresh_minutes):
             window.close()
             window = create_window(settings)
             window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
+            window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide", "Total")]) - 1} days')
+        elif event == '-SOURCE LINK-':      # Clicked on data text, open browser
+            webopen(r'https://github.com/CSSEGISandData/COVID-19')
 
         if event in (sg.TIMEOUT_KEY, '-REFRESH-'):
             sg.popup_quick_message('Updating data', font='Any 20')
-            loc_data_dict = prepare_data()
+            loc_data_dict = prepare_data(data_link)
 
         if values['-FORECAST-']:
             try:
