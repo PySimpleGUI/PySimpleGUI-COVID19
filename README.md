@@ -24,10 +24,10 @@ If you don't want to bother with setting up a Python environment and just want t
 
 # COVID-19 Grid of Graphs Interactive Data Display
 
-![image](https://user-images.githubusercontent.com/46163555/77252319-6e682780-6c29-11ea-9656-1f2ed767b58c.png)
 
 
 ## Introduction
+
 
 Viewing multiple series of data as a grid of graphs enables the viewer to quickly and easily get both the big picture as well as information on indivdual countries.  It's much like the way Tableau displays data.
 
@@ -35,7 +35,7 @@ Rather than using Matplotlib or any other graphing packages, this program uses P
 
 This program uses the Johns Hopkins Time-Series data that is posted here:
 
-https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series
+![SNAG-0711](https://user-images.githubusercontent.com/46163555/77267769-0b52b100-6c7a-11ea-8ac2-e39172ebcb76.jpg)
 
 Two files are used, one for confirmed cases, the other for deaths.
 
@@ -73,20 +73,22 @@ In addition to being able to chose the locations to display, you can also set:
 
 The default view displays only the current values and has autoscaling initially enabled.  Autoscaling will set each graph's max Y value to the max value found in the data for the country.  All graphs will be the same height when autoscaled.  Autoscaled graphs enable you to easily compare the 'shape' of the curves.  
 
-![SNAG-0705](https://user-images.githubusercontent.com/46163555/77251123-ec750000-6c22-11ea-8b05-344fe16dd0df.jpg)
+![SNAG-0713](https://user-images.githubusercontent.com/46163555/77267776-0ee63800-6c7a-11ea-9871-9436bc125188.jpg)
+
 
 When autoscaling is turned off the absolute values for each country are displayed. This enables you to see which countries have more cases than the other countries.  It's immediately evident that Italy has the most cases in this graph.
 
-![SNAG-0709](https://user-images.githubusercontent.com/46163555/77251125-ef6ff080-6c22-11ea-9489-8fddb9b6ebb5.jpg)
+![SNAG-0715](https://user-images.githubusercontent.com/46163555/77267912-83b97200-6c7a-11ea-8a29-2f48f0c2f604.jpg)
+
 
 
 ## Scrolling Through Historical Data
 
 Use the slider labeled "Way back machine" to adjust the range of dates that are displayed.  The very top of the window displays the range being shown.  By stepping the slider one day at a time you can watch the changes over time. 
 
-In this graph the data has been rewound 7 days and shows at the top that 2/13/20 to 3/14/20 are displayed:
+In this graph the data has been rewound 7 days and shows at the top that 2/14/20 to 3/15/20 are displayed:
 
-![SNAG-0708](https://user-images.githubusercontent.com/46163555/77251126-f1d24a80-6c22-11ea-9d5f-413c2c3121ef.jpg)
+![SNAG-0714](https://user-images.githubusercontent.com/46163555/77267772-0d1c7480-6c7a-11ea-91e5-17a98bbfe93b.jpg)
 
 
 ## Predicting The Future
@@ -101,8 +103,7 @@ Use the "Enable Forecasting" checkbox on the main window to enable forecasting. 
 
 This graph is showing the predicted number of deaths 7 days into the future.
 
-![SNAG-0706](https://user-images.githubusercontent.com/46163555/77251121-e4b55b80-6c22-11ea-90a2-d1d40d04efc4.jpg)
-
+![SNAG-0711](https://user-images.githubusercontent.com/46163555/77267769-0b52b100-6c7a-11ea-8ac2-e39172ebcb76.jpg)
 
 -----------------------------
 
