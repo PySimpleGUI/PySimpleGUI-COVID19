@@ -319,9 +319,9 @@ def create_window(settings):
         graph_layout += [graph_row]
 
     if settings.get('data source','confirmed') == 'confirmed':
-        heading = 'COVID-19 Leaderboard - Cases By Region      '
+        heading = 'COVID-19 Cases By Region      '
     else:
-        heading = 'COVID-19 Leaderboard - Deaths By Region      '
+        heading = 'COVID-19 Deaths By Region      '
 
     # Create the layout
     layout = [[sg.T(heading, font='Any 20'),
@@ -388,10 +388,7 @@ def main(refresh_minutes):
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
         elif event == '-FORECAST-':         # Changed Forecast checkbox
-            if values['-FORECAST-']:        # changed to TRUE so double the rows
-                settings['rows'] = settings['rows']*2
-            else:
-                settings['rows'] = settings['rows']//2
+            settings['rows'] = settings['rows']*2 if values['-FORECAST-'] else settings['rows']//2
             settings['forecasting'] = values['-FORECAST-']
             save_settings(settings, chosen_locations)
             window.close()
