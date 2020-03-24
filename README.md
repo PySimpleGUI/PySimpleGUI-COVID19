@@ -3,12 +3,20 @@ A collection of PySimpleGUI based tools to help analyze the spread of the COVID-
 
 The Johns Hopkins GitHub repository and dataset has become an amazing resource for anyone wishing to get detailed information about the COVID-19 situation.
 
+The source data for these can be found here:
+
+https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series
+
+
 ## Tools
 
 There are currently 2 tools checked in.  
 
+
 1 - The COVID-19 Distance Widget that is from the PSG-Widgets repository
+
 2 - The COVID-19 Confirmed Cases Graphs
+
 
 ## Requirements
 

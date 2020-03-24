@@ -39,9 +39,11 @@ DEFAULT_GROWTH_RATE = 1.25      # default for forecasting
 DISPLAY_DAYS = 30               # default number of days to display
 MAX_FORECASTED_DAYS = 100
 
-LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+# LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
+LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
 
-LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
+# LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
+LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
 
 
 
@@ -337,6 +339,7 @@ def create_window(settings):
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                  sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
                  sg.T('     Refresh', key='-REFRESH-', enable_events=True),
+                 # sg.T('     Raw Data', key='-RAW DATA-', enable_events=True),
                  sg.T('     Exit', key='Exit', enable_events=True),
                  sg.T(' '*20),
                  sg.T(size=(40,2), font='Any 8', key='-UPDATED-'),
@@ -396,7 +399,9 @@ def main(refresh_minutes):
             window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
             window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide", "Total")]) - 1} days')
         elif event == '-SOURCE LINK-':      # Clicked on data text, open browser
-            webopen(r'https://github.com/CSSEGISandData/COVID-19')
+            webopen(r'https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series')
+        elif event == '-RAW DATA-':
+            sg.Print(loc_data_dict[("Worldwide","Total")])
 
         if event in (sg.TIMEOUT_KEY, '-REFRESH-'):
             sg.popup_quick_message('Updating data', font='Any 20')
