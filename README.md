@@ -113,6 +113,19 @@ This graph is showing the predicted number of deaths 7 days into the future.
 
 ![SNAG-0711](https://user-images.githubusercontent.com/46163555/77267769-0b52b100-6c7a-11ea-8ac2-e39172ebcb76.jpg)
 
+
+## As Many As You Want
+
+Want to see 81 countries in 1 shot?   No problem.  The limit on the number of graphs is limited only by how much data is available.  If you have a large enough display then you can easily create a 200 or more graph display. 
+
+The big picture is that we're all in the exact same virus infested boat.
+
+The lessons learned will be from each other.
+
+![SNAG-0725](https://user-images.githubusercontent.com/46163555/77491445-29ecaf80-6e14-11ea-829b-f3b3265a8da0.jpg)
+
+
+
 -----------------------------
 
 

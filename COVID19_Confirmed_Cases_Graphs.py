@@ -124,11 +124,11 @@ def choose_locations(locations, chosen_locations):
         defaults = DEFAULT_LOCATIONS
     else:
         defaults = chosen_locations
-    max_col = 6
+    max_col = 7
     row = []
     cb_layout = []
     for i, location in enumerate(sorted(locations)):
-        row.append(sg.CB(location, size=(15,1), key=location, default=True if location in defaults else False))
+        row.append(sg.CB(location, size=(15,1), pad=(1,1), font='Any 9', key=location, default=True if location in defaults else False))
         if (i+1) % max_col == 0:
             cb_layout += [row]
             row = []
@@ -331,7 +331,8 @@ def create_window(settings):
     layout += graph_layout
     layout += [[sg.T('Way-back machine'),
                 sg.Slider((0,100), size=(30,15), orientation='h', enable_events=True, key='-SLIDER-'),
-                sg.T(f'Rewind up to 00000 days', key='-REWIND MESSAGE-')],
+                sg.T(f'Rewind up to 00000 days', key='-REWIND MESSAGE-'),
+                sg.CB('Animate Graphs', enable_events=True, key='-ANIMATE-'), sg.T('Update every'), sg.I('50', key='-ANIMATION SPEED-', enable_events=True, size=(4,1)), sg.T('milliseconds')],
                [sg.CB('Enable Forecasting', default=settings.get('forecasting',False), enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'), sg.I(str(DEFAULT_GROWTH_RATE), size=(5,1), key='-GROWTH RATE-'),
                 sg.T(f'Forecast up to {MAX_FORECASTED_DAYS} days'),
                 sg.Slider((0, MAX_FORECASTED_DAYS), default_value=1, size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),
@@ -353,10 +354,13 @@ def create_window(settings):
     return window
 
 def main(refresh_minutes):
+    refresh_time_milliseconds = refresh_minutes*60*1000
+
     settings = load_settings()
     sg.theme(settings['theme'])
     data_link = LINK_CONFIRMED_DATA if settings.get('data source','confirmed') == 'confirmed' else LINK_DEATHS_DATA
     loc_data_dict = prepare_data(data_link)
+    num_data_points = len(loc_data_dict[("Worldwide", "Total")])
     keys = loc_data_dict.keys()
     countries = set([k[0] for k in keys])
     chosen_locations = settings.get('locations',[])
@@ -366,13 +370,16 @@ def main(refresh_minutes):
 
     window = create_window(settings)
 
-    window['-SLIDER-'].update(range=(0,len(loc_data_dict[("Worldwide","Total")])-1))
-    window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide","Total")])-1} days')
+    window['-SLIDER-'].update(range=(0,num_data_points-1))
+    window['-REWIND MESSAGE-'].update(f'Rewind up to {num_data_points-1} days')
 
     update_window(window, loc_data_dict, chosen_locations, settings, 0, 1, DEFAULT_GROWTH_RATE)
 
+    animating, animation_refresh_time = False, 1.0
+
     while True:         # Event Loop
-        event, values = window.read(timeout=refresh_minutes*60*1000)
+        timeout = animation_refresh_time if animating else refresh_time_milliseconds
+        event, values = window.read(timeout=timeout)
         if event in (None, 'Exit', '-QUIT-'):
             break
         if event == '-SETTINGS-':           # "Settings" at bottom of window
@@ -385,8 +392,8 @@ def main(refresh_minutes):
                 loc_data_dict = prepare_data(data_link)
             window.close()
             window = create_window(settings)
-            window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
-            window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide", "Total")]) - 1} days')
+            window['-SLIDER-'].update(range=(0, num_data_points-1))
+            window['-REWIND MESSAGE-'].update(f'Rewind up to {num_data_points-1} days')
         elif event == '-LOCATIONS-':        # "Location" text at bottom of window
             chosen_locations = choose_locations(countries, chosen_locations)
             save_settings(settings, chosen_locations)
@@ -396,16 +403,24 @@ def main(refresh_minutes):
             save_settings(settings, chosen_locations)
             window.close()
             window = create_window(settings)
-            window['-SLIDER-'].update(range=(0, len(loc_data_dict[("Worldwide", "Total")]) - 1))
-            window['-REWIND MESSAGE-'].update(f'Rewind up to {len(loc_data_dict[("Worldwide", "Total")]) - 1} days')
+            window['-SLIDER-'].update(range=(0, num_data_points - 1))
+            window['-REWIND MESSAGE-'].update(f'Rewind up to {num_data_points - 1} days')
         elif event == '-SOURCE LINK-':      # Clicked on data text, open browser
             webopen(r'https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series')
         elif event == '-RAW DATA-':
             sg.Print(loc_data_dict[("Worldwide","Total")])
+        elif event == '-ANIMATE-':
+            animating = values['-ANIMATE-']
+            animation_refresh_time = int(values['-ANIMATION SPEED-'])
 
-        if event in (sg.TIMEOUT_KEY, '-REFRESH-'):
+        if animating:
+            new_slider = values['-SLIDER-']-1 if values['-SLIDER-'] else num_data_points
+            window['-SLIDER-'].update(new_slider)
+
+        if event in (sg.TIMEOUT_KEY, '-REFRESH-') and not animating:
             sg.popup_quick_message('Updating data', font='Any 20')
             loc_data_dict = prepare_data(data_link)
+            num_data_points = len(loc_data_dict[("Worldwide", "Total")])
 
         if values['-FORECAST-']:
             try:
