@@ -17,6 +17,8 @@ There are currently 2 tools checked in.
 
 2 - The COVID-19 Confirmed Cases Graphs
 
+3 - "Realtime Stats" - Stats that update continuously
+
 
 ## Requirements
 
@@ -127,6 +129,25 @@ The lessons learned will be from each other.
 
 
 -----------------------------
+
+# The COVID-19 "Realtime Stats"
+
+![C19Realtime](https://user-images.githubusercontent.com/46163555/78679128-d5d3d780-78b7-11ea-919b-c8591c216dd3.gif)
+
+This program is based on the graphing program previously released (see above).
+
+Rather than graphing the historical values, it shows you in realtime how the statistics would change if the latest rate of change continues.  In other words, the values are ***computed***. It is not meant to be a super-accurate representation of the data, but rather meant to show you the SPEED at which the cases or deaths are arriving.
+
+Think of it like a series of "gas pumps" that are all updating in realtime.  Some countries are adding cases rapidly, others not so quickly.
+
+For example, the total number of new cases worldwide is currently going up at a rate of 0.84 cases per second.  So, you'll see a counter for "Worldwide" that is increasing every second by 0.84.
+
+It's another "raise awareness" / look at the data in a different way that's not so mind-numbing.
+
+This program is located in this GitHub under the name `COVID19_Realtime_Stats.py`.  The corresponding EXE file is in the EXE folder.
+
+
+---------------------
 
 
 
