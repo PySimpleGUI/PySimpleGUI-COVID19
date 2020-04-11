@@ -27,6 +27,8 @@ from webbrowser import open as webopen
 
 """
 
+VERSION = '10 Apr 2020'
+
 BAR_WIDTH = 20
 BAR_SPACING = 30
 NUM_BARS = 20
@@ -42,7 +44,7 @@ MAX_FORECASTED_DAYS = 100
 
 
 SEC_PER_DAY = 86400
-REFRESH_TIME_MILLISECONDS = 111
+REFRESH_TIME_MILLISECONDS = 82
 
 # LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv'
 LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
@@ -56,6 +58,10 @@ DEFAULT_SETTINGS = {'rows': MAX_ROWS, 'cols': MAX_COLS, 'theme': 'Dark Blue 17',
                     'graph_x_size': GRAPH_SIZE[0], 'graph_y_size': GRAPH_SIZE[1], 'display days': DISPLAY_DAYS,
                     'data source': 'confirmed'}
 DEFAULT_LOCATIONS = ['Worldwide', 'US', 'China', 'Italy', 'Iran', 'France', 'Spain', 'United Kingdom', ]
+
+DEFAULT_SETTINGS = {"rows": 4, "cols": 5, "theme": "Dark Blue 17", "forecasting": False, "graph_x_size": GRAPH_SIZE[0], "graph_y_size": GRAPH_SIZE[1], "display days": 30, "data source": "confirmed", "autoscale": True, "graphmax": "50000", "locations": ["Austria", "Belgium", "Brazil", "Canada", "France", "Germany", "India", "Iran", "Italy", "Japan", "Netherlands", "Portugal", "Russia", "Spain", "Switzerland", "Turkey", "US", "Ukraine", "United Kingdom", "Worldwide"]}
+
+
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Counters.cfg')
 
@@ -71,7 +77,8 @@ def load_settings():
             settings = jsonload(f)
     except:
         sg.popup_quick_message('No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
-        settings = change_settings(DEFAULT_SETTINGS)
+        # settings = change_settings(DEFAULT_SETTINGS)
+        settings = DEFAULT_SETTINGS
         save_settings(settings)
     return settings
 
@@ -198,7 +205,8 @@ def draw_counters(window, location, graph_num, values, settings, future_days):
     if start < 0 or settings['display days'] == 0:
         start = 0
     values = values[start:]
-    window[f'-COUNTER TITLE-{graph_num}'].update(f'{location}\n{int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
+    window[f'-COUNTER TITLE1-{graph_num}'].update(f'{location}')
+    window[f'-COUNTER TITLE2-{graph_num}'].update(f'  {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
 
     cases = int(up)
     update_amount = cases / SEC_PER_DAY / (1000 / REFRESH_TIME_MILLISECONDS)
@@ -213,74 +221,8 @@ def draw_counters(window, location, graph_num, values, settings, future_days):
     window[f'-COUNTER STAT2-{graph_num}'].update(f'{update_per_second:5.2f} {data_type}/Sec')
     # window[f'-COUNTER STAT4-{graph_num}'].update(f'{cases:5.2f}')
 
-
-def draw_graph(window, location, graph_num, values, settings, future_days):
-    # update title
-    try:
-        delta = (values[-1] - values[-2]) / values[-2] * 100
-        up = values[-1] - values[-2]
-    except:
-        delta = up = 0
-
-    start = len(values) - settings['display days']
-    if start < 0 or settings['display days'] == 0:
-        start = 0
-    values = values[start:]
-    if future_days:
-        window[f'-TITLE-{graph_num}'].update(f'{location} EST in {future_days} days\n{int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
-    else:
-        window[f'-TITLE-{graph_num}'].update(f'{location} {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
-    graph = window[graph_num]
-    # auto-scale the graph.  Will make this an option in the future
-    if settings.get('autoscale', True):
-        max_value = max(values)
-    else:
-        try:
-            max_value = int(settings.get('graphmax', max(values)))
-        except:
-            max_value = max(values)
-    graph.change_coordinates((0, 0), (DATA_SIZE[0], max_value))
-    # calculate how big the bars should be
-    num_values = len(values)
-    bar_width_total = DATA_SIZE[0] / num_values
-    bar_width = bar_width_total * 2 / 3
-    bar_width_spacing = bar_width_total
-    # Draw the Graph
-    graph.erase()
-    for i, graph_value in enumerate(values):
-        bar_color = sg.theme_text_color() if i < num_values - future_days else 'red'
-        if graph_value:
-            graph.draw_rectangle(top_left=(i * bar_width_spacing + EDGE_OFFSET, graph_value),
-                                 bottom_right=(i * bar_width_spacing + EDGE_OFFSET + bar_width, 0),
-                                 line_width=0,
-                                 fill_color=bar_color)
-
-
 def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days, future_days, growth_rate):
     max_rows, max_cols = int(settings['rows']), int(settings['cols'])
-    # Erase all the graphs
-    # for row in range(max_rows):
-    #     for col in range(max_cols):
-    #         window[row * max_cols + col].erase()
-    #         window[f'-TITLE-{row * max_cols + col}'].update('')
-    ########################### Graph Section ###########################
-    # Display date of last data point
-    # header = loc_data_dict[('Header', '')]
-    # end_date = header[-(subtract_days + 1)]
-    # start = len(header) - settings['display days'] - (subtract_days + 1)
-    # if start < 0 or settings['display days'] == 0:
-    #     start = 0
-    # start_date = header[start]
-    # window['-DATE-'].update(f'{start_date} - {end_date}')
-    # # Draw the graphs
-    # for i, loc in enumerate(chosen_locations):
-    #     if i > max_cols * max_rows:
-    #         break
-    #     values = loc_data_dict[(loc, 'Total')]
-    #     if subtract_days:
-    #         values = values[:-subtract_days]
-    #
-    #     draw_graph(window, loc, i, values, settings, 0)
 
     starting_graph = 0
     ########################### Counter Section ###########################
@@ -343,14 +285,14 @@ def create_window(settings):
     max_rows, max_cols = int(settings['rows']), int(settings['cols'])
     graph_size = int(settings['graph_x_size']), int(settings['graph_y_size'])
     # Create grid of Graphs with titles
-    graph_layout = [[]]
-    for row in range(max_rows):
-        graph_row = []
-        for col in range(max_cols):
-            key_num = row * max_cols + col
-            graph = sg.Graph(graph_size, (0, 0), DATA_SIZE, key=key_num, pad=(0, 0))
-            graph_row += [sg.Column([[sg.T(size=(30, 2), key=f'-TITLE-{key_num}')], [graph]], pad=(0, 0))]
-        graph_layout += [graph_row]
+    # graph_layout = [[]]
+    # for row in range(max_rows):
+    #     graph_row = []
+    #     for col in range(max_cols):
+    #         key_num = row * max_cols + col
+    #         graph = sg.Graph(graph_size, (0, 0), DATA_SIZE, key=key_num, pad=(0, 0))
+    #         graph_row += [sg.Column([[sg.T(size=(30, 2), key=f'-TITLE-{key_num}')], [graph]], pad=(0, 0))]
+    #     graph_layout += [graph_row]
 
     counters_layout = [[]]
     for row in range(max_rows):
@@ -359,34 +301,24 @@ def create_window(settings):
             key_num = row * max_cols + col
             counter_layout = [
                                 [sg.T(size=(20,1), key=f'-COUNTER STAT1-{key_num}', font='Any 14', metadata=0)],
-                                [sg.T(size=(20,1), key=f'-COUNTER STAT2-{key_num}', font='Any 14', metadata=0)],
+                                [sg.T(size=(20,1), key=f'-COUNTER STAT2-{key_num}', font='Any 11', metadata=0)],
                                 [sg.T(size=(20,1), key=f'-COUNTER STAT3-{key_num}', font='Any 14', metadata=0)],
-                                [sg.T(size=(20,1), key=f'-COUNTER STAT4-{key_num}', font='Any 14', metadata=0)],
+                                # [sg.T(size=(20,1), key=f'-COUNTER STAT4-{key_num}', font='Any 14', metadata=0)],
                               ]
-            graph_row += [sg.Column([[sg.T(size=(30, 2), key=f'-COUNTER TITLE-{key_num}')]]+ counter_layout , pad=(0, 0))]
+            # graph_row += [sg.Column([[sg.T(size=(30, 2), key=f'-COUNTER TITLE-{key_num}')]]+ counter_layout , pad=(0, 0))]
+            graph_row += [sg.Column([[sg.T(size=(20, 1), key=f'-COUNTER TITLE1-{key_num}', font='Any 15')],
+                                     [sg.T(size=(20, 1), key=f'-COUNTER TITLE2-{key_num}')]]+ counter_layout , pad=(0, 0))]
         counters_layout += [graph_row]
-
     if settings.get('data source', 'confirmed') == 'confirmed':
-        heading = 'COVID-19 Cases Since Program Launch By Region      '
+        heading = 'COVID-19 Cases Since You Launched This Program By Region'
     else:
-        heading = 'COVID-19 Deaths Since Program Launch By Region      '
+        heading = 'COVID-19 Deaths Since You Launched This Program By Region'
+
+    heading += f'\nStarting from {datetime.now().strftime("%B %d %I:%M:%S %p")}'
 
     # Create the layout
-    layout = [[sg.T(heading, font='Any 20'),
-               sg.T(size=(15, 1), font='Any 20', key='-DATE-')], ]
-    # layout += graph_layout
+    layout = [[sg.T(heading, font='Any 20')]]
     layout += counters_layout
-    layout += [
-                # [sg.T('Way-back machine'),
-                # sg.Slider((0, 100), size=(30, 15), orientation='h', enable_events=True, key='-SLIDER-'),
-                # sg.T(f'Rewind up to 00000 days', key='-REWIND MESSAGE-'),
-                # sg.CB('Animate Graphs', enable_events=True, key='-ANIMATE-'), sg.T('Update every'),
-                # sg.I('50', key='-ANIMATION SPEED-', enable_events=True, size=(4, 1)), sg.T('milliseconds')],
-               # [sg.CB('Enable Forecasting', default=settings.get('forecasting', False), enable_events=True, key='-FORECAST-'), sg.T('       Daily growth rate'),
-               #  sg.I(str(DEFAULT_GROWTH_RATE), size=(5, 1), key='-GROWTH RATE-'),
-               #  sg.T(f'Forecast up to {MAX_FORECASTED_DAYS} days'),
-               #  sg.Slider((0, MAX_FORECASTED_DAYS), default_value=1, size=(30, 15), orientation='h', enable_events=True, key='-FUTURE SLIDER-'),]
-                ]
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                 sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
                 sg.T('     Refresh', key='-REFRESH-', enable_events=True),
@@ -394,7 +326,7 @@ def create_window(settings):
                 sg.T('     Exit', key='Exit', enable_events=True),
                 sg.T(' ' * 20),
                 sg.T(size=(40, 2), font='Any 8', key='-UPDATED-'),
-                sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19' + '\nCreated using PySimpleGUI', size=(None, 2),
+                sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19' + f'\nVersion {VERSION}  Created using PySimpleGUI' , size=(None, 2),
                      enable_events=True, font='Any 8', key='-SOURCE LINK-'),
                 ]]
 
@@ -463,7 +395,7 @@ def main(refresh_minutes):
 
 
         if loop_count % (refresh_time_milliseconds//REFRESH_TIME_MILLISECONDS) or redraw_graphs:
-            print('Refreshing graphs')
+            # print('Refreshing graphs')
             update_window(window, loc_data_dict, chosen_locations, settings, 0, future_days, growth_rate)
             redraw_graphs = False
 

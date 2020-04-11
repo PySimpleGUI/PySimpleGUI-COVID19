@@ -29,12 +29,10 @@ from webbrowser import open as webopen
 
 BAR_WIDTH = 20
 BAR_SPACING = 30
-NUM_BARS = 20
 EDGE_OFFSET = 3
 GRAPH_SIZE = (300,150)
 DATA_SIZE = (500,300)
-MAX_ROWS = 2
-MAX_COLS = 4
+MAX_ROWS, MAX_COLS = 2, 4
 DEFAULT_GROWTH_RATE = 1.25      # default for forecasting
 DISPLAY_DAYS = 30               # default number of days to display
 MAX_FORECASTED_DAYS = 100
@@ -44,7 +42,6 @@ LINK_CONFIRMED_DATA = r'https://raw.githubusercontent.com/CSSEGISandData/COVID-1
 
 # LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv"
 LINK_DEATHS_DATA = r"https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
-
 
 
 sg.theme('Dark Blue 17')
@@ -81,8 +78,9 @@ def save_settings(settings, chosen_locations=None):
 
 def change_settings(settings):
     data_is_deaths = settings.get('data source', 'confirmed') == 'deaths'
-    layout = [[sg.T('Color Theme')],
+    layout = [
               [sg.T('Display'), sg.Radio('Deaths', 1, default=data_is_deaths, key='-DATA DEATHS-'), sg.Radio('Confirmed Cases', 1, default=not data_is_deaths, key='-DATA CONFIRMED-')],
+              [sg.T('Color Theme')],
               [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
               [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
               [sg.T('Display Cols', size=(15,1), justification='r'), sg.In(settings.get('cols',''), size=(4,1), key='-COLS-' )],
