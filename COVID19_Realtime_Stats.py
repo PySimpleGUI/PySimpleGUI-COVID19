@@ -6,7 +6,7 @@ from json import dump as jsondump
 from os import path
 from datetime import datetime
 from webbrowser import open as webopen
-
+from time import time
 
 """
     Graph COVID-19 Confirmed Cases
@@ -194,7 +194,7 @@ def estimate_future(data, num_additional, rate):
     return new_data
 
 
-def draw_counters(window, location, graph_num, values, settings, future_days):
+def draw_counters(window, location, graph_num, values, settings, time_since_last_update):
     try:
         delta = (values[-1] - values[-2]) / values[-2] * 100
         up = values[-1] - values[-2]
@@ -209,7 +209,7 @@ def draw_counters(window, location, graph_num, values, settings, future_days):
     window[f'-COUNTER TITLE2-{graph_num}'].update(f'  {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
 
     cases = int(up)
-    update_amount = cases / SEC_PER_DAY / (1000 / REFRESH_TIME_MILLISECONDS)
+    update_amount = cases / SEC_PER_DAY / (1000 / time_since_last_update)
     update_per_second = cases / SEC_PER_DAY
     window[f'-COUNTER STAT1-{graph_num}'].metadata += update_amount
     cur_num = window[f'-COUNTER STAT1-{graph_num}'].metadata
@@ -231,7 +231,7 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
         if graph_num >= max_cols * max_rows:
             break
         values = loc_data_dict[(loc, 'Total')]
-        draw_counters(window, loc, i, values, settings, 0)
+        draw_counters(window, loc, i, values, settings, REFRESH_TIME_MILLISECONDS)
 
     window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {loc_data_dict[("Header", "")][-1]}')
 
@@ -360,7 +360,7 @@ def main(refresh_minutes):
 
     loop_count = growth_rate = future_days = 0
     redraw_graphs = True
-
+    last_time = time()
     while True:  # Event Loop
         # timeout = animation_refresh_time if animating else refresh_time_milliseconds
         timeout=REFRESH_TIME_MILLISECONDS
@@ -401,14 +401,17 @@ def main(refresh_minutes):
 
         max_rows, max_cols = int(settings['rows']), int(settings['cols'])
         starting_graph = 0
+        now = time()
+        delta = (now - last_time)*1000
         ########################### Counter Section ###########################
         for i, loc in enumerate(chosen_locations):
             graph_num = starting_graph + i
             if graph_num > max_cols * max_rows:
                 break
             values = loc_data_dict[(loc, 'Total')]
-            draw_counters(window, loc, i, values, settings, 0)
 
+            draw_counters(window, loc, i, values, settings, delta)
+        last_time = now
 
 
     window.close()
