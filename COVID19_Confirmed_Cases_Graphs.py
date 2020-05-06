@@ -27,6 +27,8 @@ from webbrowser import open as webopen
 
 """
 
+VERSION = '3.0 5-May-2020'
+
 BAR_WIDTH = 20
 BAR_SPACING = 30
 EDGE_OFFSET = 3
@@ -49,7 +51,7 @@ sg.theme('Dark Blue 17')
 
 DEFAULT_SETTINGS = {'rows':MAX_ROWS, 'cols':MAX_COLS, 'theme':'Dark Blue 17', 'forecasting':False,
                     'graph_x_size':GRAPH_SIZE[0], 'graph_y_size':GRAPH_SIZE[1], 'display days':DISPLAY_DAYS,
-                    'data source':'confirmed'}
+                    'data source':'confirmed', 'cumulative':True}
 DEFAULT_LOCATIONS = ['Worldwide', 'US', 'China', 'Italy', 'Iran',  'France', 'Spain',  'United Kingdom', ]
 
 SETTINGS_FILE = path.join(path.dirname(__file__), r'C19-Graph.cfg')
@@ -72,14 +74,19 @@ def load_settings():
 def save_settings(settings, chosen_locations=None):
     if chosen_locations:
         settings['locations'] = chosen_locations
-    with open(SETTINGS_FILE, 'w') as f:
+    with open(SETTINGS_FILE, 'w+') as f:
         jsondump(settings, f)
 
 
 def change_settings(settings):
+    global SETTINGS_FILE
+
     data_is_deaths = settings.get('data source', 'confirmed') == 'deaths'
     layout = [
-              [sg.T('Display'), sg.Radio('Deaths', 1, default=data_is_deaths, key='-DATA DEATHS-'), sg.Radio('Confirmed Cases', 1, default=not data_is_deaths, key='-DATA CONFIRMED-')],
+              [sg.T('Display'),
+               sg.Radio('Deaths', 1, default=data_is_deaths, key='-DATA DEATHS-'),
+               sg.Radio('Confirmed Cases', 1, default=not data_is_deaths, key='-DATA CONFIRMED-'), ],
+              [sg.Checkbox('Cumulative', default=settings.get('cumulative', DEFAULT_SETTINGS['cumulative']), key='-CUMULATIVE-')],
               [sg.T('Color Theme')],
               [sg.Combo(sg.theme_list(), default_value=settings.get('theme', DEFAULT_SETTINGS['theme']), size=(20,20), key='-THEME-' )],
               [sg.T('Display Rows', size=(15,1), justification='r'), sg.In(settings.get('rows',''), size=(4,1), key='-ROWS-' )],
@@ -101,6 +108,7 @@ def change_settings(settings):
         settings['cols'] = int(values['-COLS-'])
         settings['autoscale'] = values['-AUTOSCALE-']
         settings['graphmax'] = values['-GRAPH MAX-']
+        settings['cumulative'] = values['-CUMULATIVE-']
         try:
             settings['graph_x_size'] = int(values['-GRAPHX-'])
             settings['graph_y_size'] = int(values['-GRAPHY-'])
@@ -270,7 +278,7 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
 # State/Province    Country     Lat     Long    1/22    1/23 #
 ##############################################################
 
-def prepare_data(link):
+def prepare_data(link, settings):
     """
     Downloads the CSV file and creates a dictionary containing the data
     Dictionary:      Location (str,str) : Data [ int, int, int, ...  ]
@@ -299,7 +307,15 @@ def prepare_data(link):
                 loc_data_dict[(loc_country, row[0])] = row[4:]
                 for j, d in enumerate(row[4:]):
                     totals[j] += int(d if d!= '' else 0)
-        loc_data_dict[(loc_country, 'Total')] = totals
+
+        if settings.get('cumulative', True):
+            loc_data_dict[(loc_country, 'Total')] = totals
+        else:
+            deltas = []
+            for i, x in enumerate(totals):
+                deltas.append(x - totals[i-1] if i != 0 else 0)
+            loc_data_dict[(loc_country, 'Total')] = deltas
+
 
     loc_data_dict[('Header','')] = header
 
@@ -338,26 +354,30 @@ def create_window(settings):
     layout += [[sg.T('Settings', key='-SETTINGS-', enable_events=True),
                  sg.T('     Locations', key='-LOCATIONS-', enable_events=True),
                  sg.T('     Refresh', key='-REFRESH-', enable_events=True),
+                 sg.T('     Change Settings File', key='-CHANGE SETTINGS FILENAME-', enable_events=True),
                  # sg.T('     Raw Data', key='-RAW DATA-', enable_events=True),
                  sg.T('     Exit', key='Exit', enable_events=True),
                  sg.T(' '*20),
                  sg.T(size=(40,2), font='Any 8', key='-UPDATED-'),
-                 sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19'+'\nCreated using PySimpleGUI', size=(None, 2), enable_events=True, font='Any 8', key='-SOURCE LINK-'),
-                ]]
+                 sg.Col([[sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19', enable_events=True, font='Any 8', key='-SOURCE LINK-', pad=(0,0))],
+                [sg.T(f'Version {VERSION} Created using PySimpleGUI', font='Any 8', enable_events=True, key='-PSG LINK-', pad=(0,0))]])]
+                ]
 
     window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=False, no_titlebar=False, margins=(0,0), icon=ICON,  finalize=True)
 
-    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-']]
+    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-', '-PSG LINK-']]
 
     return window
 
 def main(refresh_minutes):
+    global SETTINGS_FILE
+
     refresh_time_milliseconds = refresh_minutes*60*1000
 
     settings = load_settings()
     sg.theme(settings['theme'])
     data_link = LINK_CONFIRMED_DATA if settings.get('data source','confirmed') == 'confirmed' else LINK_DEATHS_DATA
-    loc_data_dict = prepare_data(data_link)
+    loc_data_dict = prepare_data(data_link, settings)
     num_data_points = len(loc_data_dict[("Worldwide", "Total")])
     keys = loc_data_dict.keys()
     countries = set([k[0] for k in keys])
@@ -380,14 +400,26 @@ def main(refresh_minutes):
         event, values = window.read(timeout=timeout)
         if event in (None, 'Exit', '-QUIT-'):
             break
+
+        if event == '-CHANGE SETTINGS FILENAME-':
+            new_filename = sg.popup_get_file('New settings file to use', 'New Settings Filename', default_path=SETTINGS_FILE, initial_folder=path.dirname(SETTINGS_FILE), file_types=(("Settings Files","*.cfg"),))
+            if new_filename and path.exists(new_filename):
+                SETTINGS_FILE = new_filename
+                settings = load_settings()
+                chosen_locations = settings.get('locations', [])
+                event = '-SETTINGS-'        # fake a user clicking "change settings"
+            elif new_filename:              # if didn't exist, then save current settings to new file
+                SETTINGS_FILE = new_filename
+                save_settings(settings, chosen_locations)
         if event == '-SETTINGS-':           # "Settings" at bottom of window
+            previous_cumulative_setting = settings.get('cumulative', True)
             settings = change_settings(settings)
             save_settings(settings, chosen_locations)
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
             new_data_link = LINK_CONFIRMED_DATA if settings.get('data source', 'confirmed') == 'confirmed' else LINK_DEATHS_DATA
-            if new_data_link != data_link:
+            if new_data_link != data_link or previous_cumulative_setting != settings['cumulative']:
                 data_link = new_data_link
-                loc_data_dict = prepare_data(data_link)
+                loc_data_dict = prepare_data(data_link, settings)
             window.close()
             window = create_window(settings)
             window['-SLIDER-'].update(range=(0, num_data_points-1))
@@ -405,6 +437,8 @@ def main(refresh_minutes):
             window['-REWIND MESSAGE-'].update(f'Rewind up to {num_data_points - 1} days')
         elif event == '-SOURCE LINK-':      # Clicked on data text, open browser
             webopen(r'https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series')
+        elif event == '-PSG LINK-':      # Clicked on data text, open browser
+            webopen(r'http://www.PySimpleGUI.com')
         elif event == '-RAW DATA-':
             sg.Print(loc_data_dict[("Worldwide","Total")])
         elif event == '-ANIMATE-':
@@ -417,7 +451,7 @@ def main(refresh_minutes):
 
         if event in (sg.TIMEOUT_KEY, '-REFRESH-') and not animating:
             sg.popup_quick_message('Updating data', font='Any 20')
-            loc_data_dict = prepare_data(data_link)
+            loc_data_dict = prepare_data(data_link, settings)
             num_data_points = len(loc_data_dict[("Worldwide", "Total")])
 
         if values['-FORECAST-']:
