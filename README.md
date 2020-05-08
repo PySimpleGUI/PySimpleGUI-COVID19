@@ -53,6 +53,11 @@ Each graph displays a header that shows the country name, the number of new case
 
 ![image](https://user-images.githubusercontent.com/46163555/77251392-770a2f00-6c24-11ea-8bb3-0ea27f19b181.png)
 
+New in version 4.0 is the ability to view as cumulative stats or individual. It's important to be able to view the data in a variety of ways now.  Cumulative isn't as important as the numbers of new cases/deaths.
+
+![SNAG-0790](https://user-images.githubusercontent.com/46163555/81389988-b6171580-90e8-11ea-8346-4ef107e338d7.jpg)
+
+
 
 ## First Run
 
@@ -160,6 +165,17 @@ This was the first of these tools developed and was publised in the PSG Widgets 
 
 
 ------------------------
+
+# Release Notes
+
+## Version 4.0 8-May-2020
+
+Sorry this is the first entry, but better late than never
+
+* Choice of cumulative or individual data points - super important now
+* Added a frame around each graph so there is less confusion about what coutry label goes with which graph. The labels are at the top of the graphs, but was easy to mix up.  It takes more space, but since you can change graph sizes in the settings it's not a big deal
+* Can choose the settings file. This was added a version back but worth mentioning. The default settings file is always shown first.  If you want to have multiple configurations, for example one with many many countries, you can save as a new config file and load it.
+k
 
 # NOTES
 
