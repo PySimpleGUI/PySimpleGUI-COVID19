@@ -27,7 +27,7 @@ from webbrowser import open as webopen
 
 """
 
-VERSION = '3.0 5-May-2020'
+VERSION = '4.0 8-May-2020'
 
 BAR_WIDTH = 20
 BAR_SPACING = 30
@@ -199,10 +199,11 @@ def draw_graph(window, location, graph_num, values, settings, future_days):
     if start < 0 or settings['display days'] == 0:
         start = 0
     values = values[start:]
+    arrow = '↑' if up > 0 else '↓'
     if future_days:
-        window[f'-TITLE-{graph_num}'].update(f'{location} EST in {future_days} days\n{int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
+        window[f'-TITLE-{graph_num}'].update(f'{location} EST in {future_days} days\n{int(max(values)):8,} {arrow} {int(up):,} Δ {delta:3.0f}%')
     else:
-        window[f'-TITLE-{graph_num}'].update(f'{location} {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
+        window[f'-TITLE-{graph_num}'].update(f'{location} {int(max(values)):8,} {arrow} {int(up):,} Δ {delta:3.0f}%')
     graph = window[graph_num]
     # auto-scale the graph.  Will make this an option in the future
     if settings.get('autoscale', True):
@@ -331,7 +332,7 @@ def create_window(settings):
         graph_row = []
         for col in range(max_cols):
             graph = sg.Graph(graph_size, (0,0), DATA_SIZE, key=row*max_cols+col, pad=(0,0))
-            graph_row += [sg.Column([[sg.T(size=(30,2), key=f'-TITLE-{row*max_cols+col}')],[graph]], pad=(0,0))]
+            graph_row += [sg.Frame('', [[sg.T(size=(30,2), key=f'-TITLE-{row*max_cols+col}', font='helvetica 9')],[graph]], pad=(0,0))]
         graph_layout += [graph_row]
 
     if settings.get('data source','confirmed') == 'confirmed':
@@ -365,7 +366,8 @@ def create_window(settings):
 
     window = sg.Window('COVID-19 Confirmed Cases', layout, grab_anywhere=False, no_titlebar=False, margins=(0,0), icon=ICON,  finalize=True)
 
-    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-', '-PSG LINK-']]
+    # set cursor to hand for all text elements that looks like links
+    _ = [window[key].set_cursor('hand2') for key in ('-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-', '-PSG LINK-')]
 
     return window
 
@@ -412,14 +414,11 @@ def main(refresh_minutes):
                 SETTINGS_FILE = new_filename
                 save_settings(settings, chosen_locations)
         if event == '-SETTINGS-':           # "Settings" at bottom of window
-            previous_cumulative_setting = settings.get('cumulative', True)
             settings = change_settings(settings)
             save_settings(settings, chosen_locations)
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
-            new_data_link = LINK_CONFIRMED_DATA if settings.get('data source', 'confirmed') == 'confirmed' else LINK_DEATHS_DATA
-            if new_data_link != data_link or previous_cumulative_setting != settings['cumulative']:
-                data_link = new_data_link
-                loc_data_dict = prepare_data(data_link, settings)
+            data_link = LINK_CONFIRMED_DATA if settings.get('data source', 'confirmed') == 'confirmed' else LINK_DEATHS_DATA
+            loc_data_dict = prepare_data(data_link, settings)
             window.close()
             window = create_window(settings)
             window['-SLIDER-'].update(range=(0, num_data_points-1))
