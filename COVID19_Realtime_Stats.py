@@ -27,7 +27,7 @@ from time import time
 
 """
 
-VERSION = '17 May 2020'
+VERSION = '10 Apr 2020'
 
 BAR_WIDTH = 20
 BAR_SPACING = 30
@@ -201,31 +201,25 @@ def draw_counters(window, location, graph_num, values, settings, time_since_last
     except:
         delta = up = 0
 
-    try:
-        start = len(values) - settings['display days']
-        if start < 0 or settings['display days'] == 0:
-            start = 0
-        values = values[start:]
-        window[f'-COUNTER TITLE1-{graph_num}'].update(f'{location}')
-        window[f'-COUNTER TITLE2-{graph_num}'].update(f'  {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
+    start = len(values) - settings['display days']
+    if start < 0 or settings['display days'] == 0:
+        start = 0
+    values = values[start:]
+    window[f'-COUNTER TITLE1-{graph_num}'].update(f'{location}')
+    window[f'-COUNTER TITLE2-{graph_num}'].update(f'  {int(max(values)):8,} ↑ {int(up):,} Δ {delta:3.0f}%')
 
-        cases = int(up)
-        update_amount = cases / SEC_PER_DAY / (1000 / time_since_last_update)
-        update_per_second = cases / SEC_PER_DAY
-        window[f'-COUNTER STAT1-{graph_num}'].metadata += update_amount
-        cur_num = window[f'-COUNTER STAT1-{graph_num}'].metadata
+    cases = int(up)
+    update_amount = cases / SEC_PER_DAY / (1000 / time_since_last_update)
+    update_per_second = cases / SEC_PER_DAY
+    window[f'-COUNTER STAT1-{graph_num}'].metadata += update_amount
+    cur_num = window[f'-COUNTER STAT1-{graph_num}'].metadata
 
-        data_type = 'Deaths' if settings['data source'] == 'deaths' else 'Cases'
+    data_type = 'Deaths' if settings['data source'] == 'deaths' else 'Cases'
 
-        window[f'-COUNTER STAT1-{graph_num}'].update(f'{cur_num:5.2f} New {data_type}')
-        # window[f'-COUNTER STAT2-{graph_num}'].update(f'{update_amount:5.2f}')
-        window[f'-COUNTER STAT2-{graph_num}'].update(f'{update_per_second:5.2f} {data_type}/Sec')
-        # window[f'-COUNTER STAT4-{graph_num}'].update(f'{cases:5.2f}')
-    except:
-        sg.popup('You have some kind of error during update',
-                 'You likely need to update number of rows in your settings')
-        raise IndexError('You likely have a problem with number of rows')
-
+    window[f'-COUNTER STAT1-{graph_num}'].update(f'{cur_num:5.2f} New {data_type}')
+    # window[f'-COUNTER STAT2-{graph_num}'].update(f'{update_amount:5.2f}')
+    window[f'-COUNTER STAT2-{graph_num}'].update(f'{update_per_second:5.2f} {data_type}/Sec')
+    # window[f'-COUNTER STAT4-{graph_num}'].update(f'{cases:5.2f}')
 
 def update_window(window, loc_data_dict, chosen_locations, settings, subtract_days, future_days, growth_rate):
     max_rows, max_cols = int(settings['rows']), int(settings['cols'])
@@ -237,10 +231,7 @@ def update_window(window, loc_data_dict, chosen_locations, settings, subtract_da
         if graph_num >= max_cols * max_rows:
             break
         values = loc_data_dict[(loc, 'Total')]
-        try:
-            draw_counters(window, loc, i, values, settings, REFRESH_TIME_MILLISECONDS)
-        except:
-            pass        # for now can't do anything, let the user try in the mainloop to fix
+        draw_counters(window, loc, i, values, settings, REFRESH_TIME_MILLISECONDS)
 
     window['-UPDATED-'].update('Updated ' + datetime.now().strftime("%B %d %I:%M:%S %p") + f'\nDate of last datapoint {loc_data_dict[("Header", "")][-1]}')
 
@@ -335,13 +326,13 @@ def create_window(settings):
                 sg.T('     Exit', key='Exit', enable_events=True),
                 sg.T(' ' * 20),
                 sg.T(size=(40, 2), font='Any 8', key='-UPDATED-'),
-                sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19' + f'\nVersion {VERSION}  Created using PySimpleGUI' , size=(40, 2),
+                sg.T(r'Data source: Johns Hopkins - https://github.com/CSSEGISandData/COVID-19' + f'\nVersion {VERSION}  Created using PySimpleGUI' , size=(None, 2),
                      enable_events=True, font='Any 8', key='-SOURCE LINK-'),
                 ]]
 
     window = sg.Window('COVID-19 Realtime Stats', layout, grab_anywhere=False, no_titlebar=False, margins=(0, 0), icon=ICON, finalize=True)
 
-    # [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-']]
+    [window[key].set_cursor('hand2') for key in ['-SETTINGS-', '-LOCATIONS-', '-REFRESH-', 'Exit', '-SOURCE LINK-']]
 
     return window
 
@@ -369,7 +360,6 @@ def main(refresh_minutes):
 
     loop_count = growth_rate = future_days = 0
     redraw_graphs = True
-    force_new_settings = False
     last_time = time()
     while True:  # Event Loop
         # timeout = animation_refresh_time if animating else refresh_time_milliseconds
@@ -377,8 +367,7 @@ def main(refresh_minutes):
         event, values = window.read(timeout=timeout)
         if event in (None, 'Exit', '-QUIT-'):
             break
-        if event == '-SETTINGS-' or force_new_settings:  # "Settings" at bottom of window
-            force_new_settings = False
+        if event == '-SETTINGS-':  # "Settings" at bottom of window
             settings = change_settings(settings)
             save_settings(settings, chosen_locations)
             sg.theme(settings['theme'] if settings.get('theme') else sg.theme())
@@ -421,11 +410,7 @@ def main(refresh_minutes):
                 break
             values = loc_data_dict[(loc, 'Total')]
 
-            try:
-                draw_counters(window, loc, i, values, settings, delta)
-            except:
-                force_new_settings = True
-
+            draw_counters(window, loc, i, values, settings, delta)
         last_time = now
 
 
