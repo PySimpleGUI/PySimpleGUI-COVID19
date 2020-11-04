@@ -27,7 +27,7 @@ from webbrowser import open as webopen
 
 """
 
-VERSION = '4.0 8-May-2020'
+VERSION = '4.1 4-Nov-2020'
 
 BAR_WIDTH = 20
 BAR_SPACING = 30
@@ -287,6 +287,13 @@ def prepare_data(link, settings):
     """
 
     data = download_data(link)
+    # remove blank rows
+    new_data = []
+    for row in data:
+        if row:
+            new_data.append(row)
+    data = new_data
+
     header = data[0][4:]
     graph_data = [row[4:] for row in data[1:]]
     graph_values = []
